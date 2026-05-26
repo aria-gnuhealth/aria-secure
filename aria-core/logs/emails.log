@@ -1,0 +1,484 @@
+============================================================
+📧 TO: thierryassokeng@gmail.com
+📧 FROM: ariasecure.support@gmail.com
+📧 SUBJECT: 🔐 ARIA Secure - Activez votre compte
+📧 BODY:
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Bienvenue sur ARIA Secure</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f6f9;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #1F6B9E 0%, #0d4a6e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+        }
+        .header p {
+            margin: 10px 0 0;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 30px;
+        }
+        .button {
+            display: inline-block;
+            background: linear-gradient(135deg, #1F6B9E 0%, #0d4a6e 100%);
+            color: white !important;
+            padding: 14px 32px;
+            text-decoration: none;
+            border-radius: 50px;
+            margin: 20px 0;
+            font-weight: bold;
+            text-align: center;
+        }
+        .button:hover {
+            background: linear-gradient(135deg, #0d4a6e 0%, #0a3a55 100%);
+        }
+        .footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 12px;
+            color: #777;
+            border-top: 1px solid #eee;
+            background-color: #fafafa;
+        }
+        .warning {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 12px;
+            margin: 20px 0;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏥 ARIA Secure</h1>
+            <p>Automated Radiography Intelligent Analysis</p>
+        </div>
+        <div class="content">
+            <h2>Vérification de votre adresse email</h2>
+            <p>Bonjour,</p>
+            <p>Merci de vous être inscrit sur <strong>ARIA Secure</strong>, notre plateforme d'analyse radiographique assistée par intelligence artificielle.</p>
+            <p>Pour activer votre compte et accéder à nos services, veuillez cliquer sur le bouton ci-dessous :</p>
+            
+            <div style="text-align: center;">
+                <a href="http://localhost:8000/api/v1/auth/verify-email/XsBO6GH2aVuJ1SZwkekfEZfn_U3NYuUvudCbPEtiBNk" class="button">✅ Activer mon compte</a>
+            </div>
+            
+            <p>Si le bouton ne fonctionne pas, copiez et collez ce lien dans votre navigateur :</p>
+            <p style="background-color: #f0f0f0; padding: 10px; word-break: break-all; font-size: 12px;">
+                <a href="http://localhost:8000/api/v1/auth/verify-email/XsBO6GH2aVuJ1SZwkekfEZfn_U3NYuUvudCbPEtiBNk">http://localhost:8000/api/v1/auth/verify-email/XsBO6GH2aVuJ1SZwkekfEZfn_U3NYuUvudCbPEtiBNk</a>
+            </p>
+            
+            <div class="warning">
+                ⏰ <strong>Ce lien expire dans 24 heures.</strong><br>
+                Après expiration, vous devrez demander un nouvel email de vérification.
+            </div>
+            
+            <p><strong>Pourquoi cette vérification ?</strong><br>
+            La vérification de votre email garantit la sécurité de vos données médicales et conforme aux réglementations (RGPD/HIPAA).</p>
+            
+            <p>Si vous n'avez pas créé de compte sur ARIA Secure, ignorez cet email.</p>
+            
+            <p>Cordialement,<br>
+            <strong>L'équipe ARIA Secure</strong><br>
+            <span style="color: #1F6B9E;">ariasecure.support@gmail.com</span></p>
+        </div>
+        <div class="footer">
+            <p>🔒 ARIA Secure - Solution d'analyse radiographique par IA</p>
+            <p>Cet email a été envoyé automatiquement, merci de ne pas y répondre.</p>
+            <p>© 2025 ARIA Secure - Tous droits réservés</p>
+        </div>
+    </div>
+</body>
+</html>
+    
+============================================================
+
+============================================================
+📧 TO: thierryassokeng@gmail.com
+📧 FROM: ariasecure.support@gmail.com
+📧 SUBJECT: 🔐 ARIA Secure - Activez votre compte
+📧 BODY:
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Bienvenue sur ARIA Secure</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f6f9;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #1F6B9E 0%, #0d4a6e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+        }
+        .header p {
+            margin: 10px 0 0;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 30px;
+        }
+        .button {
+            display: inline-block;
+            background: linear-gradient(135deg, #1F6B9E 0%, #0d4a6e 100%);
+            color: white !important;
+            padding: 14px 32px;
+            text-decoration: none;
+            border-radius: 50px;
+            margin: 20px 0;
+            font-weight: bold;
+            text-align: center;
+        }
+        .button:hover {
+            background: linear-gradient(135deg, #0d4a6e 0%, #0a3a55 100%);
+        }
+        .footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 12px;
+            color: #777;
+            border-top: 1px solid #eee;
+            background-color: #fafafa;
+        }
+        .warning {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 12px;
+            margin: 20px 0;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏥 ARIA Secure</h1>
+            <p>Automated Radiography Intelligent Analysis</p>
+        </div>
+        <div class="content">
+            <h2>Vérification de votre adresse email</h2>
+            <p>Bonjour,</p>
+            <p>Merci de vous être inscrit sur <strong>ARIA Secure</strong>, notre plateforme d'analyse radiographique assistée par intelligence artificielle.</p>
+            <p>Pour activer votre compte et accéder à nos services, veuillez cliquer sur le bouton ci-dessous :</p>
+            
+            <div style="text-align: center;">
+                <a href="http://localhost:8000/api/v1/auth/verify-email/SCDO08xTFGdCbc-FQPMfHEsiji_xqr7uEmpMXqgWDys" class="button">✅ Activer mon compte</a>
+            </div>
+            
+            <p>Si le bouton ne fonctionne pas, copiez et collez ce lien dans votre navigateur :</p>
+            <p style="background-color: #f0f0f0; padding: 10px; word-break: break-all; font-size: 12px;">
+                <a href="http://localhost:8000/api/v1/auth/verify-email/SCDO08xTFGdCbc-FQPMfHEsiji_xqr7uEmpMXqgWDys">http://localhost:8000/api/v1/auth/verify-email/SCDO08xTFGdCbc-FQPMfHEsiji_xqr7uEmpMXqgWDys</a>
+            </p>
+            
+            <div class="warning">
+                ⏰ <strong>Ce lien expire dans 24 heures.</strong><br>
+                Après expiration, vous devrez demander un nouvel email de vérification.
+            </div>
+            
+            <p><strong>Pourquoi cette vérification ?</strong><br>
+            La vérification de votre email garantit la sécurité de vos données médicales et conforme aux réglementations (RGPD/HIPAA).</p>
+            
+            <p>Si vous n'avez pas créé de compte sur ARIA Secure, ignorez cet email.</p>
+            
+            <p>Cordialement,<br>
+            <strong>L'équipe ARIA Secure</strong><br>
+            <span style="color: #1F6B9E;">ariasecure.support@gmail.com</span></p>
+        </div>
+        <div class="footer">
+            <p>🔒 ARIA Secure - Solution d'analyse radiographique par IA</p>
+            <p>Cet email a été envoyé automatiquement, merci de ne pas y répondre.</p>
+            <p>© 2025 ARIA Secure - Tous droits réservés</p>
+        </div>
+    </div>
+</body>
+</html>
+    
+============================================================
+
+============================================================
+📧 TO: thierryassokenjhg@gmail.com
+📧 FROM: ariasecure.support@gmail.com
+📧 SUBJECT: 🔐 ARIA Secure - Activez votre compte
+📧 BODY:
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Bienvenue sur ARIA Secure</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f6f9;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #1F6B9E 0%, #0d4a6e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+        }
+        .header p {
+            margin: 10px 0 0;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 30px;
+        }
+        .button {
+            display: inline-block;
+            background: linear-gradient(135deg, #1F6B9E 0%, #0d4a6e 100%);
+            color: white !important;
+            padding: 14px 32px;
+            text-decoration: none;
+            border-radius: 50px;
+            margin: 20px 0;
+            font-weight: bold;
+            text-align: center;
+        }
+        .button:hover {
+            background: linear-gradient(135deg, #0d4a6e 0%, #0a3a55 100%);
+        }
+        .footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 12px;
+            color: #777;
+            border-top: 1px solid #eee;
+            background-color: #fafafa;
+        }
+        .warning {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 12px;
+            margin: 20px 0;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏥 ARIA Secure</h1>
+            <p>Automated Radiography Intelligent Analysis</p>
+        </div>
+        <div class="content">
+            <h2>Vérification de votre adresse email</h2>
+            <p>Bonjour,</p>
+            <p>Merci de vous être inscrit sur <strong>ARIA Secure</strong>, notre plateforme d'analyse radiographique assistée par intelligence artificielle.</p>
+            <p>Pour activer votre compte et accéder à nos services, veuillez cliquer sur le bouton ci-dessous :</p>
+            
+            <div style="text-align: center;">
+                <a href="http://localhost:8000/api/v1/auth/verify-email/utLMRukpZizcz0Ojiifg3cJrik1NNrih7AhexWWtmW8" class="button">✅ Activer mon compte</a>
+            </div>
+            
+            <p>Si le bouton ne fonctionne pas, copiez et collez ce lien dans votre navigateur :</p>
+            <p style="background-color: #f0f0f0; padding: 10px; word-break: break-all; font-size: 12px;">
+                <a href="http://localhost:8000/api/v1/auth/verify-email/utLMRukpZizcz0Ojiifg3cJrik1NNrih7AhexWWtmW8">http://localhost:8000/api/v1/auth/verify-email/utLMRukpZizcz0Ojiifg3cJrik1NNrih7AhexWWtmW8</a>
+            </p>
+            
+            <div class="warning">
+                ⏰ <strong>Ce lien expire dans 24 heures.</strong><br>
+                Après expiration, vous devrez demander un nouvel email de vérification.
+            </div>
+            
+            <p><strong>Pourquoi cette vérification ?</strong><br>
+            La vérification de votre email garantit la sécurité de vos données médicales et conforme aux réglementations (RGPD/HIPAA).</p>
+            
+            <p>Si vous n'avez pas créé de compte sur ARIA Secure, ignorez cet email.</p>
+            
+            <p>Cordialement,<br>
+            <strong>L'équipe ARIA Secure</strong><br>
+            <span style="color: #1F6B9E;">ariasecure.support@gmail.com</span></p>
+        </div>
+        <div class="footer">
+            <p>🔒 ARIA Secure - Solution d'analyse radiographique par IA</p>
+            <p>Cet email a été envoyé automatiquement, merci de ne pas y répondre.</p>
+            <p>© 2025 ARIA Secure - Tous droits réservés</p>
+        </div>
+    </div>
+</body>
+</html>
+    
+============================================================
+
+============================================================
+📧 TO: thierryassokeng@gmail.com
+📧 FROM: ariasecure.support@gmail.com
+📧 SUBJECT: 🔐 ARIA Secure - Activez votre compte
+📧 BODY:
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Bienvenue sur ARIA Secure</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f6f9;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #1F6B9E 0%, #0d4a6e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+        }
+        .header p {
+            margin: 10px 0 0;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 30px;
+        }
+        .button {
+            display: inline-block;
+            background: linear-gradient(135deg, #1F6B9E 0%, #0d4a6e 100%);
+            color: white !important;
+            padding: 14px 32px;
+            text-decoration: none;
+            border-radius: 50px;
+            margin: 20px 0;
+            font-weight: bold;
+            text-align: center;
+        }
+        .button:hover {
+            background: linear-gradient(135deg, #0d4a6e 0%, #0a3a55 100%);
+        }
+        .footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 12px;
+            color: #777;
+            border-top: 1px solid #eee;
+            background-color: #fafafa;
+        }
+        .warning {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 12px;
+            margin: 20px 0;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏥 ARIA Secure</h1>
+            <p>Automated Radiography Intelligent Analysis</p>
+        </div>
+        <div class="content">
+            <h2>Vérification de votre adresse email</h2>
+            <p>Bonjour,</p>
+            <p>Merci de vous être inscrit sur <strong>ARIA Secure</strong>, notre plateforme d'analyse radiographique assistée par intelligence artificielle.</p>
+            <p>Pour activer votre compte et accéder à nos services, veuillez cliquer sur le bouton ci-dessous :</p>
+            
+            <div style="text-align: center;">
+                <a href="http://localhost:8000/api/v1/auth/verify-email/QdbZ3MYhu4JnkqeWGWoUUOikPnGYsnGZ338aUl9Ximo" class="button">✅ Activer mon compte</a>
+            </div>
+            
+            <p>Si le bouton ne fonctionne pas, copiez et collez ce lien dans votre navigateur :</p>
+            <p style="background-color: #f0f0f0; padding: 10px; word-break: break-all; font-size: 12px;">
+                <a href="http://localhost:8000/api/v1/auth/verify-email/QdbZ3MYhu4JnkqeWGWoUUOikPnGYsnGZ338aUl9Ximo">http://localhost:8000/api/v1/auth/verify-email/QdbZ3MYhu4JnkqeWGWoUUOikPnGYsnGZ338aUl9Ximo</a>
+            </p>
+            
+            <div class="warning">
+                ⏰ <strong>Ce lien expire dans 24 heures.</strong><br>
+                Après expiration, vous devrez demander un nouvel email de vérification.
+            </div>
+            
+            <p><strong>Pourquoi cette vérification ?</strong><br>
+            La vérification de votre email garantit la sécurité de vos données médicales et conforme aux réglementations (RGPD/HIPAA).</p>
+            
+            <p>Si vous n'avez pas créé de compte sur ARIA Secure, ignorez cet email.</p>
+            
+            <p>Cordialement,<br>
+            <strong>L'équipe ARIA Secure</strong><br>
+            <span style="color: #1F6B9E;">ariasecure.support@gmail.com</span></p>
+        </div>
+        <div class="footer">
+            <p>🔒 ARIA Secure - Solution d'analyse radiographique par IA</p>
+            <p>Cet email a été envoyé automatiquement, merci de ne pas y répondre.</p>
+            <p>© 2025 ARIA Secure - Tous droits réservés</p>
+        </div>
+    </div>
+</body>
+</html>
+    
+============================================================
+

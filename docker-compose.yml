@@ -1,0 +1,150 @@
+#version: '3.8'
+
+# ------------------------------------------------------------
+# ARIA — Docker Compose (Développement)
+# ------------------------------------------------------------
+# Lancer : docker-compose up -d
+# Arrêter : docker-compose down
+# Logs    : docker-compose logs -f
+# ------------------------------------------------------------
+
+services:
+
+  # ---------- BACKEND ARIA-CORE (FastAPI) ----------
+  aria-core:
+    build: ./aria-core
+    restart: unless-stopped
+    ports:
+      - '8000:8000'
+    environment:
+      - DATABASE_URL=postgresql://aria_user:aria_password@postgres:5432/aria_db
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET_KEY=48378899d78f163387ee3c1fa7eef8974daa1172266c0be59bf8a86b05dee42f
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=aria_minio
+      - MINIO_SECRET_KEY=aria_minio_pwd
+      - MINIO_BUCKET=aria-dicom
+      - ONNX_MODEL_PATH=ml/models/aria_densenet121_v1.onnx
+      - ONNX_PROVIDERS=CPUExecutionProvider
+      - GH_API_URL=${GH_API_URL:-http://gnuhealth-server:8000/api/fhir}
+      - GH_CLIENT_ID=aria_module
+      - GH_CLIENT_SECRET=change_me_gnuhealth
+      - ENVIRONMENT=development
+      - LOG_LEVEL=INFO
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      minio:
+        condition: service_started
+    volumes:
+      - ./ml/models:/app/ml/models:ro   # Modèles ONNX en lecture seule
+      - ./aria-core:/app                # Hot-reload en développement
+    networks:
+      - aria-network
+
+  # ---------- CELERY WORKER (tâches IA asynchrones) ----------
+  celery-worker:
+    build: ./aria-core
+    command: celery -A app.celery worker --loglevel=info --concurrency=2
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgresql://aria_user:aria_password@postgres:5432/aria_db
+      - REDIS_URL=redis://redis:6379
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=aria_minio
+      - MINIO_SECRET_KEY=aria_minio_pwd
+      - MINIO_BUCKET=aria-dicom
+      - ONNX_MODEL_PATH=ml/models/aria_densenet121_v1.onnx
+      - ONNX_PROVIDERS=CPUExecutionProvider
+      - ENVIRONMENT=development
+      - LOG_LEVEL=INFO
+    depends_on:
+      - aria-core
+      - redis
+      - postgres
+    volumes:
+      - ./ml/models:/app/ml/models:ro
+    networks:
+      - aria-network
+
+  # ---------- POSTGRESQL ----------
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: aria_db
+      POSTGRES_USER: aria_user
+      POSTGRES_PASSWORD: aria_password
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aria_user -d aria_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - aria-network
+
+  # ---------- REDIS (Broker Celery) ----------
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    networks:
+      - aria-network
+
+  # ---------- MINIO (Stockage DICOM) ----------
+  minio:
+    image: minio/minio
+    command: server /data --console-address ':9001'
+    restart: unless-stopped
+    ports:
+      - '9000:9000'   # API S3
+      - '9001:9001'   # Console web → http://localhost:9001
+    environment:
+      MINIO_ROOT_USER: aria_minio
+      MINIO_ROOT_PASSWORD: aria_minio_pwd
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - aria-network
+
+  # ---------- PGADMIN (Interface graphique PostgreSQL) ----------
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    restart: unless-stopped
+    ports:
+      - '5050:80'     # Interface web → http://localhost:5050
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@aria.local
+      PGADMIN_DEFAULT_PASSWORD: aria_pgadmin
+    depends_on:
+      - postgres
+    networks:
+      - aria-network
+
+# ---------- VOLUMES PERSISTANTS ----------
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  minio_data:
+    driver: local
+
+# ---------- RÉSEAU INTERNE ----------
+networks:
+  aria-network:
+    driver: bridge
