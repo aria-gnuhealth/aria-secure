@@ -28,3 +28,5 @@ bcrypt>=3.2.2
 Pillow>=10.3.0
 scikit-image>=0.24.0
 #process:141457
+reportlab>=4.2.0
+flower>=0.3.0

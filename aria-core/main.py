@@ -37,12 +37,15 @@ app.add_middleware(
 # ------------------------------------------------------------
 # Routes API
 # ------------------------------------------------------------
-from app.api.v1 import auth, patients, images, analyze  # ⚠️ IMPORTANT : ajouter cette ligne
+from app.api.v1 import auth, patients, images, analyze, ai_models, reports, audit  # ⚠️ IMPORTANT : ajouter cette ligne
 
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
 app.include_router(patients.router, prefix="/api/v1", tags=["Patients"])
 app.include_router(images.router, prefix="/api/v1", tags=["Images"])
 app.include_router(analyze.router, prefix="/api/v1", tags=["Analysis"])
+app.include_router(ai_models.router, prefix="/api/v1", tags=["AI Models"])
+app.include_router(reports.router, prefix="/api/v1", tags=["Reports"])
+app.include_router(audit.router, prefix="/api/v1/audit", tags=["Audit Logs"])
 # ------------------------------------------------------------
 # Routes de base
 # ------------------------------------------------------------

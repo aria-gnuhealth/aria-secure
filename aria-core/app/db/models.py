@@ -112,13 +112,13 @@ class AIModel(Base):
     __tablename__ = "ai_models"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    name = Column(String(100), nullable=False)
-    version = Column(String(50), nullable=False)
-    architecture = Column(String(100), nullable=True)
+    name = Column(String(100), nullable=False)  # "CheXpert", "MURA"
+    version = Column(String(50), nullable=False)  # "1.0.0"
+    architecture = Column(String(100), nullable=True)  # "DenseNet121", "EfficientNetV2-S"
     onnx_path = Column(String(500), nullable=False)
     is_active = Column(Boolean, default=False)
-    input_shape = Column(String(50), nullable=True)
-    output_classes = Column(JSON, nullable=True)  # List of pathologies
+    input_shape = Column(String(50), nullable=True)  # "224x224x3"
+    output_classes = Column(JSON, nullable=True)  # List of pathologies or "fracture"
     accuracy = Column(Float, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     deployed_at = Column(DateTime(timezone=True), nullable=True)
@@ -127,7 +127,7 @@ class AIModel(Base):
     analyses = relationship("Analysis", back_populates="ai_model")
 
     def __repr__(self):
-        return f"<AIModel {self.name} v{self.version}>"
+        return f"<AIModel {self.name} v{self.version} - active={self.is_active}>"
 
 
 class Analysis(Base):
@@ -143,6 +143,9 @@ class Analysis(Base):
     confidence_score = Column(Float, nullable=True)
     urgency_level = Column(String(50), nullable=True)
     heatmap_path = Column(String(500), nullable=True)
+    
+    # ⚠️ AJOUTER CETTE LIGNE SI MANQUANTE
+    results_json = Column(Text, nullable=True)  # Stockage JSON des résultats
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     completed_at = Column(DateTime(timezone=True), nullable=True)

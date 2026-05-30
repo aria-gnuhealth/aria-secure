@@ -7,3 +7,6 @@ node_modules/
 .expo/
 venv/
 *.db
+*.pth
+*.zip
+aria_rapport.json

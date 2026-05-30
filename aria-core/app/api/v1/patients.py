@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
 from typing import Optional
@@ -14,8 +14,11 @@ from app.models.patient import (
     PatientListResponse,
     PatientSearchResponse
 )
+from app.services.audit_service import get_audit_service
+from app.services.redis_service import get_redis_service
 
 router = APIRouter()
+audit_service = get_audit_service()
 
 
 # ------------------------------------------------------------
@@ -32,6 +35,14 @@ async def list_patients(
     Retourne la liste paginée des patients.
     Nécessite une authentification.
     """
+    
+    redis_service = get_redis_service()
+    
+    # Vérifier le cache
+    cached = redis_service.get_cached_patient_list(str(current_user.id), page)
+    if cached:
+        return cached
+    
     # Calculer l'offset
     offset = (page - 1) * per_page
     
@@ -47,13 +58,18 @@ async def list_patients(
     # Calculer le nombre de pages
     pages = (total + per_page - 1) // per_page if total > 0 else 1
     
-    return PatientListResponse(
+    response = PatientListResponse(
         items=[PatientResponse.model_validate(p) for p in patients],
         total=total,
         page=page,
         per_page=per_page,
         pages=pages
     )
+
+    # Mettre en cache (5 minutes)
+    redis_service.cache_patient_list(str(current_user.id), page, response.model_dump(), ttl=300)
+
+    return response
 
 
 # ------------------------------------------------------------
@@ -88,6 +104,7 @@ async def search_patients(
 # ------------------------------------------------------------
 @router.post("/patients", response_model=PatientResponse, status_code=status.HTTP_201_CREATED)
 async def create_patient(
+    request: Request,
     patient_data: PatientCreate,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
@@ -128,6 +145,19 @@ async def create_patient(
     db.add(new_patient)
     db.commit()
     db.refresh(new_patient)
+    
+    audit_service.log(
+        db=db,
+        user_id=str(current_user.id),
+        action="PATIENT_CREATED",
+        resource_type="patient",
+        resource_id=str(new_patient.id),
+        request=request,
+        details=f"Patient créé: {new_patient.first_name} {new_patient.last_name}"
+    )
+    
+    redis_service = get_redis_service()
+    redis_service.invalidate_patient_list_cache(str(current_user.id))
     
     return PatientResponse.model_validate(new_patient)
 
@@ -193,6 +223,7 @@ async def get_patient_by_mrn(
 # ------------------------------------------------------------
 @router.put("/patients/{patient_id}", response_model=PatientResponse)
 async def update_patient(
+    request: Request,
     patient_id: str,
     patient_data: PatientUpdate,
     db: Session = Depends(get_db),
@@ -231,6 +262,17 @@ async def update_patient(
     db.commit()
     db.refresh(patient)
     
+    audit_service.log(
+        db=db,
+        user_id=str(current_user.id),
+        action="PATIENT_UPDATED",
+        resource_type="patient",
+        resource_id=str(patient.id),
+        request=request,
+        details=f"Patient mis à jour: {patient.first_name} {patient.last_name}"
+    )
+
+    
     return PatientResponse.model_validate(patient)
 
 
@@ -239,6 +281,7 @@ async def update_patient(
 # ------------------------------------------------------------
 @router.delete("/patients/{patient_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_patient(
+    request: Request,
     patient_id: str,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
@@ -272,6 +315,16 @@ async def delete_patient(
     
     db.delete(patient)
     db.commit()
+    
+    audit_service.log(
+        db=db,
+        user_id=str(current_user.id),
+        action="PATIENT_DELETED",
+        resource_type="patient",
+        resource_id=patient_id,
+        request=request,
+        details=f"Patient supprimé: {patient.first_name} {patient.last_name}"
+    )
     
     return None  # 204 No Content
 

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, timezone
@@ -28,8 +28,10 @@ from app.utils.email import (
     send_verification_reminder,
     send_password_reset_email
 )
+from app.services.audit_service import get_audit_service
 
 router = APIRouter()
+audit_service = get_audit_service()
 
 
 def generate_verification_token() -> str:
@@ -42,6 +44,7 @@ def generate_verification_token() -> str:
 # ------------------------------------------------------------
 @router.post("/register", response_model=MessageResponse, status_code=status.HTTP_201_CREATED)
 async def register(
+    request: Request,
     user_data: UserRegister,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
@@ -110,6 +113,17 @@ async def register(
         new_user.email,
         verification_token
     )
+    
+    audit_service.log(
+        db=db,
+        user_id=str(new_user.id),
+        action="USER_REGISTERED",
+        resource_type="user",
+        resource_id=str(new_user.id),
+        request=request,
+        details=f"Nouvel utilisateur créé avec le rôle {user_data.role}"
+    )
+
     
     return MessageResponse(
         message="Compte créé avec succès. Un email de vérification vous a été envoyé. Veuillez activer votre compte avant de vous connecter.",
@@ -221,6 +235,7 @@ async def resend_verification_email(
 # ------------------------------------------------------------
 @router.post("/login", response_model=TokenResponse)
 async def login(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
@@ -272,6 +287,17 @@ async def login(
         "role": user.role
     }
     access_token = create_access_token(token_data)
+    
+    audit_service.log(
+        db=db,
+        user_id=str(user.id),
+        action="LOGIN",
+        resource_type="user",
+        resource_id=str(user.id),
+        request=request,
+        details=f"Connexion réussie depuis {request.client.host if request.client else 'unknown'}"
+    )
+
     
     return TokenResponse(
         access_token=access_token,

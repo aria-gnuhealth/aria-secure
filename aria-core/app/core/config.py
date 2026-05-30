@@ -34,6 +34,7 @@ class Settings:
     # IA / ONNX
     ONNX_MODEL_PATH: str = os.getenv("ONNX_MODEL_PATH", "ml/models/aria_densenet121_v1.onnx")
     ONNX_PROVIDERS: list = [os.getenv("ONNX_PROVIDERS", "CPUExecutionProvider")]
+    ONNX_MODEL_MURA_PATH: str = os.getenv("ONNX_MODEL_MURA_PATH", "ml/models/aria_mura.onnx")
 
     # GNU Health
     GH_API_URL: str = os.getenv("GH_API_URL", "")
