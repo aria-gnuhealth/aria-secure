@@ -12,7 +12,7 @@ class Settings:
     POSTGRES_USER: str = os.getenv("POSTGRES_USER", "aria_user")
     POSTGRES_PASSWORD: str = os.getenv("POSTGRES_PASSWORD", "")
     POSTGRES_DB: str = os.getenv("POSTGRES_DB", "aria_db")
-    DATABASE_URL: str = os.getenv("DATABASE_URL", f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_SERVER}:5432/{POSTGRES_DB}")
+    DATABASE_URL = "postgresql://aria_user:aria123@localhost:5432/aria_db"
 
     # Redis
     REDIS_HOST: str = os.getenv("REDIS_HOST", "localhost")

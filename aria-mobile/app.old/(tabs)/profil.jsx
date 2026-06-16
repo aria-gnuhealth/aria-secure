@@ -1,0 +1,163 @@
+import { useState, useEffect } from "react";
+import {
+  View, Text, StyleSheet, TouchableOpacity,
+  Alert, ScrollView
+} from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRouter } from "expo-router";
+import api from "../../services/api";
+
+export default function ProfilScreen() {
+  const router = useRouter();
+  const [user, setUser] = useState(null);
+
+  useEffect(() => { loadUser(); }, []);
+
+  const loadUser = async () => {
+    const u = await AsyncStorage.getItem("user");
+    if (u) setUser(JSON.parse(u));
+  };
+
+  const handleLogout = async () => {
+    Alert.alert("Déconnexion", "Voulez-vous vraiment vous déconnecter ?", [
+      { text: "Annuler", style: "cancel" },
+      {
+        text: "Déconnexion", style: "destructive",
+        onPress: async () => {
+          try { await api.post("/auth/logout"); } catch (e) {}
+          await AsyncStorage.removeItem("token");
+          await AsyncStorage.removeItem("user");
+          router.replace("/");
+        }
+      }
+    ]);
+  };
+
+  const getRoleColor = (role) => {
+    const colors = {
+      user: "#1a73e8", radiologist: "#9c27b0",
+      nurse: "#00897b", admin: "#e65100", auditor: "#546e7a"
+    };
+    return colors[role] || "#666";
+  };
+
+  const getRoleLabel = (role) => {
+    const labels = {
+      user: "Médecin", radiologist: "Radiologue",
+      nurse: "Infirmier(e)", admin: "Administrateur", auditor: "Auditeur"
+    };
+    return labels[role] || role;
+  };
+
+  const getInitials = (first, last) =>
+    `${first?.[0] || ""}${last?.[0] || ""}`.toUpperCase();
+
+  return (
+    <ScrollView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Mon profil</Text>
+      </View>
+
+      <View style={styles.profileCard}>
+        <View style={[styles.avatar, { backgroundColor: getRoleColor(user?.role) + "20" }]}>
+          <Text style={[styles.avatarText, { color: getRoleColor(user?.role) }]}>
+            {getInitials(user?.firstName, user?.lastName)}
+          </Text>
+        </View>
+        <Text style={styles.fullName}>{user?.firstName} {user?.lastName}</Text>
+        <View style={[styles.roleBadge, { backgroundColor: getRoleColor(user?.role) + "20" }]}>
+          <Text style={[styles.roleText, { color: getRoleColor(user?.role) }]}>
+            {getRoleLabel(user?.role)}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Informations</Text>
+        <View style={styles.infoRow}>
+          <Text style={styles.infoIcon}>✉️</Text>
+          <View>
+            <Text style={styles.infoLabel}>Email</Text>
+            <Text style={styles.infoValue}>{user?.email}</Text>
+          </View>
+        </View>
+        <View style={styles.infoRow}>
+          <Text style={styles.infoIcon}>🏥</Text>
+          <View>
+            <Text style={styles.infoLabel}>Rôle</Text>
+            <Text style={styles.infoValue}>{getRoleLabel(user?.role)}</Text>
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Application</Text>
+        <View style={styles.infoRow}>
+          <Text style={styles.infoIcon}>🤖</Text>
+          <View>
+            <Text style={styles.infoLabel}>ARIA</Text>
+            <Text style={styles.infoValue}>Automated Radiography Intelligent Analysis</Text>
+          </View>
+        </View>
+        <View style={styles.infoRow}>
+          <Text style={styles.infoIcon}>📱</Text>
+          <View>
+            <Text style={styles.infoLabel}>Version</Text>
+            <Text style={styles.infoValue}>1.0.0</Text>
+          </View>
+        </View>
+      </View>
+
+      <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+        <Text style={styles.logoutText}>Se déconnecter</Text>
+      </TouchableOpacity>
+
+      <View style={{ height: 40 }} />
+    </ScrollView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: "#f8f9fa" },
+  header: {
+    backgroundColor: "#fff", paddingHorizontal: 20,
+    paddingTop: 56, paddingBottom: 16,
+    borderBottomWidth: 0.5, borderBottomColor: "#e0e0e0"
+  },
+  headerTitle: { fontSize: 26, fontWeight: "700", color: "#1a1a1a" },
+  profileCard: {
+    alignItems: "center", backgroundColor: "#fff",
+    marginHorizontal: 16, marginTop: 16, borderRadius: 16,
+    padding: 24, borderWidth: 0.5, borderColor: "#e8e8e8"
+  },
+  avatar: {
+    width: 80, height: 80, borderRadius: 40,
+    justifyContent: "center", alignItems: "center", marginBottom: 12
+  },
+  avatarText: { fontSize: 28, fontWeight: "700" },
+  fullName: { fontSize: 20, fontWeight: "700", color: "#1a1a1a", marginBottom: 8 },
+  roleBadge: { paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20 },
+  roleText: { fontSize: 13, fontWeight: "600" },
+  section: {
+    backgroundColor: "#fff", marginHorizontal: 16, marginTop: 16,
+    borderRadius: 16, padding: 16, borderWidth: 0.5, borderColor: "#e8e8e8"
+  },
+  sectionTitle: {
+    fontSize: 12, fontWeight: "700", color: "#999",
+    textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 12
+  },
+  infoRow: {
+    flexDirection: "row", alignItems: "flex-start",
+    paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: "#f0f0f0",
+    gap: 12
+  },
+  infoIcon: { fontSize: 18, marginTop: 2 },
+  infoLabel: { fontSize: 12, color: "#999", marginBottom: 2 },
+  infoValue: { fontSize: 14, color: "#1a1a1a", fontWeight: "500" },
+  logoutBtn: {
+    marginHorizontal: 16, marginTop: 24, backgroundColor: "#fff",
+    borderRadius: 16, padding: 16, alignItems: "center",
+    borderWidth: 1, borderColor: "#ff3b30"
+  },
+  logoutText: { color: "#ff3b30", fontSize: 16, fontWeight: "600" }
+});

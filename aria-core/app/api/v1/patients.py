@@ -157,7 +157,7 @@ async def create_patient(
     )
     
     redis_service = get_redis_service()
-    redis_service.invalidate_patient_list_cache(str(current_user.id))
+    redis_service.invalidate_analysis_cache(str(current_user.id))
     
     return PatientResponse.model_validate(new_patient)
 

@@ -1,0 +1,187 @@
+import uuid
+from datetime import datetime, timezone
+from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy.orm import Session
+from app.db.session import get_db
+from app.api.v1.auth import get_current_user
+from app.db import models
+
+router = APIRouter()
+
+@router.post("/analyze/chest", status_code=200)
+async def analyze_chest(
+    image_id: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+    request: Request = None
+):
+    # Simulation : retourne un résultat immédiat
+    try:
+        image_uuid = uuid.UUID(image_id)
+    except ValueError:
+        raise HTTPException(400, "ID image invalide")
+
+    image = db.query(models.Image).filter(models.Image.id == image_uuid).first()
+    if not image:
+        raise HTTPException(404, "Image non trouvée")
+
+    # Vérifier si une analyse existe déjà
+    existing = db.query(models.Analysis).filter(
+        models.Analysis.image_id == image_uuid,
+        models.Analysis.status.in_([models.AnalysisStatus.PENDING, models.AnalysisStatus.PROCESSING])
+    ).first()
+    if existing:
+        return {
+            "success": True,
+            "analysis_id": str(existing.id),
+            "status": existing.status.value,
+            "message": "Analyse déjà en cours"
+        }
+
+    # Créer une nouvelle analyse avec des résultats fictifs
+    analysis_id = uuid.uuid4()
+    now = datetime.now(timezone.utc)
+    results = [
+        {"pathology": "Pneumothorax", "probability": 0.78, "percentage": "78%", "detected": True, "urgency": "CRITIQUE", "color": "#C62828"},
+        {"pathology": "Pleural Effusion", "probability": 0.45, "percentage": "45%", "detected": False, "urgency": "MOYEN", "color": "#F57F17"},
+        {"pathology": "Cardiomegaly", "probability": 0.62, "percentage": "62%", "detected": True, "urgency": "ÉLEVÉ", "color": "#E65100"}
+    ]
+    new_analysis = models.Analysis(
+        id=analysis_id,
+        patient_id=image.patient_id,
+        image_id=image_uuid,
+        user_id=current_user.id,
+        ai_model_id=None,  # pas de modèle réel
+        status=models.AnalysisStatus.COMPLETED,
+        confidence_score=0.87,
+        urgency_level="CRITIQUE",
+        results_json=results,
+        created_at=now,
+        completed_at=now
+    )
+    db.add(new_analysis)
+    db.commit()
+    db.refresh(new_analysis)
+
+    return {
+        "success": True,
+        "analysis_id": str(analysis_id),
+        "status": "completed"
+    }
+
+@router.post("/analyze/fracture", status_code=200)
+async def analyze_fracture(
+    image_id: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+    request: Request = None
+):
+    try:
+        image_uuid = uuid.UUID(image_id)
+    except ValueError:
+        raise HTTPException(400, "ID image invalide")
+
+    image = db.query(models.Image).filter(models.Image.id == image_uuid).first()
+    if not image:
+        raise HTTPException(404, "Image non trouvée")
+
+    existing = db.query(models.Analysis).filter(
+        models.Analysis.image_id == image_uuid,
+        models.Analysis.status.in_([models.AnalysisStatus.PENDING, models.AnalysisStatus.PROCESSING])
+    ).first()
+    if existing:
+        return {
+            "success": True,
+            "analysis_id": str(existing.id),
+            "status": existing.status.value,
+            "message": "Analyse déjà en cours"
+        }
+
+    analysis_id = uuid.uuid4()
+    now = datetime.now(timezone.utc)
+    results = [
+        {"pathology": "Fracture", "probability": 0.92, "percentage": "92%", "detected": True, "urgency": "CRITIQUE", "color": "#C62828"},
+        {"pathology": "Normal", "probability": 0.08, "percentage": "8%", "detected": False, "urgency": "NORMAL", "color": "#2E7D32"}
+    ]
+    new_analysis = models.Analysis(
+        id=analysis_id,
+        patient_id=image.patient_id,
+        image_id=image_uuid,
+        user_id=current_user.id,
+        ai_model_id=None,
+        status=models.AnalysisStatus.COMPLETED,
+        confidence_score=0.92,
+        urgency_level="CRITIQUE",
+        results_json=results,
+        created_at=now,
+        completed_at=now
+    )
+    db.add(new_analysis)
+    db.commit()
+    db.refresh(new_analysis)
+
+    return {
+        "success": True,
+        "analysis_id": str(analysis_id),
+        "status": "completed"
+    }
+
+@router.get("/analyze/{analysis_id}/result", status_code=200)
+async def get_analysis_result(
+    analysis_id: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    try:
+        analysis_uuid = uuid.UUID(analysis_id)
+    except ValueError:
+        raise HTTPException(400, "ID analyse invalide")
+    analysis = db.query(models.Analysis).filter(models.Analysis.id == analysis_uuid).first()
+    if not analysis:
+        raise HTTPException(404, "Analyse non trouvée")
+    # Retourner les résultats
+    return {
+        "success": True,
+        "analysis_id": str(analysis.id),
+        "image_id": str(analysis.image_id),
+        "patient_id": str(analysis.patient_id),
+        "model": None,
+        "status": analysis.status.value,
+        "created_at": analysis.created_at.isoformat(),
+        "completed_at": analysis.completed_at.isoformat() if analysis.completed_at else None,
+        "confidence_score": analysis.confidence_score,
+        "urgency_level": analysis.urgency_level,
+        "findings": [],
+        "results": analysis.results_json if isinstance(analysis.results_json, list) else []
+    }
+
+@router.get("/analyze/image/{image_id}/analyses", status_code=200)
+async def get_image_analyses(
+    image_id: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    try:
+        image_uuid = uuid.UUID(image_id)
+    except ValueError:
+        raise HTTPException(400, "ID image invalide")
+    image = db.query(models.Image).filter(models.Image.id == image_uuid).first()
+    if not image:
+        raise HTTPException(404, "Image non trouvée")
+    analyses = db.query(models.Analysis).filter(models.Analysis.image_id == image_uuid).order_by(models.Analysis.created_at.desc()).all()
+    return {
+        "success": True,
+        "image_id": str(image.id),
+        "patient_id": str(image.patient_id),
+        "total": len(analyses),
+        "analyses": [
+            {
+                "analysis_id": str(a.id),
+                "model_name": None,
+                "status": a.status.value,
+                "created_at": a.created_at.isoformat(),
+                "confidence_score": a.confidence_score,
+                "urgency_level": a.urgency_level
+            } for a in analyses
+        ]
+    }

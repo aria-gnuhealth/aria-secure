@@ -1,0 +1,112 @@
+version: '3.8'
+
+# ============================================================
+# ARIA — Docker Compose pour le Développement
+# ============================================================
+# Services uniquement (PostgreSQL, Redis, MinIO)
+# Le code Python tourne sur ta machine (hot-reload)
+# ============================================================
+# Lancement : docker-compose -f docker-compose.dev.yml up -d
+# Arrêt     : docker-compose -f docker-compose.dev.yml down
+# Logs      : docker-compose -f docker-compose.dev.yml logs -f
+# ============================================================
+
+services:
+  # ---------- POSTGRESQL ----------
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: aria_db
+      POSTGRES_USER: aria_user
+      POSTGRES_PASSWORD: aria_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aria_user -d aria_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - aria-dev-network
+
+  # ---------- REDIS (Cache + Celery Broker) ----------
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_dev_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - aria-dev-network
+
+  # ---------- MINIO (Stockage DICOM) ----------
+  minio:
+    image: minio/minio
+    restart: unless-stopped
+    command: server /data --console-address ':9001'
+    ports:
+      - "9000:9000"   # API S3
+      - "9001:9001"   # Console web
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio_dev_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - aria-dev-network
+
+  # ---------- PGADMIN (Interface graphique PostgreSQL - Optionnel) ----------
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    restart: unless-stopped
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@aria.local
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    depends_on:
+      - postgres
+    networks:
+      - aria-dev-network
+    profiles:
+      - debug
+
+  # ---------- MAILHOG (Email catch-all pour développement) ----------
+  mailhog:
+    image: mailhog/mailhog:latest
+    restart: unless-stopped
+    ports:
+      - "1025:1025"  # SMTP
+      - "8025:8025"  # Interface web
+    networks:
+      - aria-dev-network
+    profiles:
+      - debug
+
+# ---------- VOLUMES PERSISTANTS ----------
+volumes:
+  postgres_dev_data:
+    driver: local
+  redis_dev_data:
+    driver: local
+  minio_dev_data:
+    driver: local
+
+# ---------- RÉSEAU ----------
+networks:
+  aria-dev-network:
+    driver: bridge

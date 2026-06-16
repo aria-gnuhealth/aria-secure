@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+venv/
+env/
+.env
+*.db
+*.sqlite
+logs/
+.DS_Store
+ml/models/*.onnx
+.pytest_cache/
+.DS_Store
