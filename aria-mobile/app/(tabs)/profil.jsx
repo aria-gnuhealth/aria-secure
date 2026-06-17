@@ -94,7 +94,16 @@ export default function ProfilScreen() {
         </View>
       </View>
 
-$(cat /tmp/admin_btn.txt)
+      {/* Bouton Admin (visible uniquement pour les admins) */}
+      {user?.role === "admin" && (
+        <TouchableOpacity
+          style={styles.adminBtn}
+          onPress={() => router.push("/admin/users")}
+        >
+          <Text style={styles.adminBtnText}>👑 Administration</Text>
+        </TouchableOpacity>
+      )}
+
       <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
         <Text style={styles.logoutText}>Se déconnecter</Text>
       </TouchableOpacity>

@@ -391,3 +391,93 @@ async def forgot_password(
         message="Si un compte avec cet email existe et est vérifié, vous recevrez un lien de réinitialisation.",
         success=True
     )
+# ============================================================
+# ADMIN ONLY – Gestion des utilisateurs
+# ============================================================
+
+@router.get("/users")
+async def get_users(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Liste tous les utilisateurs (admin uniquement)"""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Permission refusée")
+    
+    users = db.query(models.User).all()
+    return [
+        {
+            "id": str(u.id),
+            "email": u.email,
+            "first_name": u.first_name,
+            "last_name": u.last_name,
+            "role": u.role,
+            "is_active": u.is_active,
+            "is_email_verified": u.is_email_verified,
+            "created_at": u.created_at.isoformat() if u.created_at else None
+        }
+        for u in users
+    ]
+
+@router.put("/users/{user_id}/role")
+async def update_user_role(
+    user_id: str,
+    role_data: dict,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Modifier le rôle d'un utilisateur (admin uniquement)"""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Permission refusée")
+    
+    try:
+        user_uuid = uuid.UUID(user_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="ID utilisateur invalide")
+    
+    user = db.query(models.User).filter(models.User.id == user_uuid).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
+    
+    new_role = role_data.get("role")
+    if not new_role:
+        raise HTTPException(status_code=400, detail="Rôle manquant")
+    
+    if new_role not in ["admin", "radiologist", "doctor", "nurse", "auditor"]:
+        raise HTTPException(status_code=400, detail="Rôle invalide")
+    
+    # Empêcher de modifier son propre rôle
+    if user.id == current_user.id:
+        raise HTTPException(status_code=400, detail="Vous ne pouvez pas modifier votre propre rôle")
+    
+    user.role = new_role
+    db.commit()
+    
+    return {"message": f"Rôle modifié en {new_role}"}
+
+@router.delete("/users/{user_id}")
+async def delete_user(
+    user_id: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Supprimer un utilisateur (admin uniquement)"""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Permission refusée")
+    
+    try:
+        user_uuid = uuid.UUID(user_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="ID utilisateur invalide")
+    
+    user = db.query(models.User).filter(models.User.id == user_uuid).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
+    
+    if user.id == current_user.id:
+        raise HTTPException(status_code=400, detail="Vous ne pouvez pas supprimer votre propre compte")
+    
+    db.delete(user)
+    db.commit()
+    
+    return {"message": "Utilisateur supprimé"}
