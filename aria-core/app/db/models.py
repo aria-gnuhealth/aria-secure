@@ -97,7 +97,6 @@ class Image(Base):
     anonymized_path = Column(String(500), nullable=True)
     acquisition_date = Column(DateTime(timezone=True), nullable=True)
     body_part = Column(String(50), nullable=True)  # chest, skull, abdomen
-    deleted_at = Column(DateTime(timezone=True), nullable=True, default=None)
     metadata_json = Column(JSON, nullable=True)  # DICOM metadata
 
     # Relationships

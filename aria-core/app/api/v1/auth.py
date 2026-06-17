@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Body, BackgroundTasks, Request
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, timezone
@@ -391,26 +391,3 @@ async def forgot_password(
         message="Si un compte avec cet email existe et est vérifié, vous recevrez un lien de réinitialisation.",
         success=True
     )
-@router.post("/reset-password", status_code=200)
-async def reset_password(
-    token: str = Body(..., embed=True),
-    new_password: str = Body(..., embed=True),
-    db: Session = Depends(get_db)
-):
-    """Réinitialiser le mot de passe avec le token reçu par email."""
-    from app.core.security import get_password_hash
-    from datetime import datetime, timezone
-
-    user = db.query(models.User).filter(models.User.email_verification_token == token).first()
-    if not user:
-        # Option : utiliser un token dédié pour reset password (table séparée)
-        # Ici on réutilise le token de vérification email pour simplifier
-        raise HTTPException(status_code=400, detail="Token invalide ou expiré")
-
-    # Marquer le token comme utilisé (ou le supprimer)
-    user.password_hash = get_password_hash(new_password)
-    user.email_verification_token = None  # invalider le token
-    user.updated_at = datetime.now(timezone.utc)
-    db.commit()
-
-    return {"message": "Mot de passe réinitialisé avec succès"}

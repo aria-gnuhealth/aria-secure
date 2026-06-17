@@ -94,6 +94,7 @@ export default function ProfilScreen() {
         </View>
       </View>
 
+$(cat /tmp/admin_btn.txt)
       <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
         <Text style={styles.logoutText}>Se déconnecter</Text>
       </TouchableOpacity>
@@ -164,6 +165,17 @@ const styles = StyleSheet.create({
   infoIcon: { fontSize: 18, marginTop: 2 },
   infoLabel: { fontSize: 12, color: "#999", marginBottom: 2 },
   infoValue: { fontSize: 14, color: "#1a1a1a", fontWeight: "500" },
+  adminBtn: {
+    backgroundColor: "#fff3e0",
+    marginHorizontal: 16,
+    marginTop: 12,
+    borderRadius: 16,
+    padding: 16,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#ffb74d",
+  },
+  adminBtnText: { color: "#e65100", fontSize: 16, fontWeight: "600" },
   logoutBtn: {
     marginHorizontal: 16,
     marginTop: 24,

@@ -157,13 +157,11 @@ async def generate_analysis_report(
     report_filename = f"reports/analysis_{analysis_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
     
     try:
-        import io
-        minio_service.client.put_object(
-            bucket_name="aria-dicom",
-            object_name=report_filename,
-            data=io.BytesIO(pdf_bytes),
-            length=len(pdf_bytes),
-            content_type="application/pdf"
+        minio_service.upload_image(
+            image_data=pdf_bytes,
+            content_type="application/pdf",
+            patient_id=str(patient.id),
+            original_filename=report_filename
         )
     except Exception as e:
         raise HTTPException(

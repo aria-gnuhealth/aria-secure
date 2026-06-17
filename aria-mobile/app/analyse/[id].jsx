@@ -1,9 +1,6 @@
 import { useState, useEffect } from "react";
-import {
-  View, Text, StyleSheet, ScrollView,
-  ActivityIndicator, TouchableOpacity
-} from "react-native";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity } from "react-native";
 import api from "../../services/api";
 
 export default function AnalyseResult() {
@@ -11,17 +8,19 @@ export default function AnalyseResult() {
   const { id } = useLocalSearchParams();
   const [analyse, setAnalyse] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (id) fetchAnalyse();
+    if (id) fetchAnalyse(id);
+    else setError("ID manquant");
   }, [id]);
 
-  const fetchAnalyse = async () => {
+  const fetchAnalyse = async (analysisId) => {
     try {
-      const res = await api.get(`/analyze/${id}/result`);
+      const res = await api.get(`/analyze/${analysisId}/result`);
       setAnalyse(res.data);
-    } catch (error) {
-      console.log("Erreur chargement analyse:", error);
+    } catch (e) {
+      setError(e.response?.data?.detail || e.message);
     } finally {
       setLoading(false);
     }
@@ -42,31 +41,28 @@ export default function AnalyseResult() {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color="#1a73e8" />
-        <Text style={styles.loadingText}>Chargement des résultats...</Text>
+        <Text style={styles.loadingText}>Analyse en cours...</Text>
       </View>
     );
   }
 
-  if (!analyse) {
+  if (error || !analyse) {
     return (
       <View style={styles.centered}>
-        <Text style={{ fontSize: 18, color: "#555" }}>Aucun résultat</Text>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Text style={{ color: "#1a73e8", marginTop: 16 }}>Retour</Text>
+        <Text style={{ color: "red", fontSize: 16 }}>❌ {error || "Aucun résultat"}</Text>
+        <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 16 }}>
+          <Text style={{ color: "#1a73e8", fontSize: 16 }}>Retour</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
-  const urgency = getUrgencyStyle(analyse?.urgency_level);
-  let results = [];
-  try {
-    results = typeof analyse?.results === "string"
-      ? JSON.parse(analyse.results)
-      : (analyse?.results || []);
-  } catch (e) {}
-
-  const detected = results.filter(r => r.detected);
+  // Récupérer les données
+  const urgency = getUrgencyStyle(analyse.urgency_level || analyse.results?.urgency);
+  const confidence = analyse.confidence_score || analyse.results?.probability || 0;
+  const findings = analyse.findings || [];
+  const diagnostic = analyse.results?.diagnostic || "Aucun diagnostic";
+  const isAbnormal = analyse.results?.is_abnormal || false;
 
   return (
     <ScrollView style={styles.container}>
@@ -76,45 +72,47 @@ export default function AnalyseResult() {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Résultat IA</Text>
         <Text style={styles.headerSub}>
-          {analyse?.model?.name || "CheXpert"} v{analyse?.model?.version || "1.0"}
+          {analyse.model?.name || "Modèle"} v{analyse.model?.version || "1.0"}
         </Text>
       </View>
 
       <View style={[styles.urgencyCard, { backgroundColor: urgency.bg }]}>
         <Text style={[styles.urgencyLabel, { color: urgency.color }]}>{urgency.label}</Text>
         <Text style={[styles.urgencyScore, { color: urgency.color }]}>
-          Score : {((analyse?.confidence_score || 0) * 100).toFixed(1)}%
+          Score : {(confidence * 100).toFixed(1)}%
         </Text>
         <Text style={[styles.urgencyDate, { color: urgency.color }]}>
-          {analyse?.completed_at
+          {diagnostic}
+        </Text>
+        <Text style={[styles.urgencyDate, { color: urgency.color }]}>
+          {analyse.completed_at
             ? new Date(analyse.completed_at).toLocaleString("fr-FR")
             : "—"}
         </Text>
       </View>
 
-      {detected.length > 0 ? (
+      {findings.length > 0 ? (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>⚠️ Anomalies détectées ({detected.length})</Text>
-          {detected.map((item, i) => (
+          <Text style={styles.sectionTitle}>
+            {isAbnormal ? `⚠️ Pathologie(s) détectée(s) (${findings.length})` : "✅ Aucune anomalie détectée"}
+          </Text>
+          {findings.map((item, i) => (
             <View key={i} style={styles.findingCard}>
               <View style={styles.findingHeader}>
                 <Text style={styles.findingName}>{item.pathology}</Text>
-                <Text style={[styles.findingBadge, { backgroundColor: (item.color || "#F57F17") + "30" }]}>
-                  <Text style={[styles.findingBadgeText, { color: item.color || "#F57F17" }]}>
-                    {item.urgency || "MOYEN"}
+                <Text style={[styles.findingBadge, { backgroundColor: "#FFEBEE" }]}>
+                  <Text style={[styles.findingBadgeText, { color: "#C62828" }]}>
+                    {(item.probability * 100).toFixed(1)}%
                   </Text>
                 </Text>
               </View>
               <View style={styles.progressContainer}>
                 <View style={styles.progressBg}>
                   <View style={[styles.progressFill, {
-                    width: item.percentage || `${Math.round((item.probability || 0) * 100)}%`,
-                    backgroundColor: item.color || "#F57F17"
+                    width: `${(item.probability || 0) * 100}%`,
+                    backgroundColor: item.probability > 0.7 ? "#C62828" : item.probability > 0.4 ? "#E65100" : "#F57F17"
                   }]} />
                 </View>
-                <Text style={styles.progressText}>
-                  {item.percentage || `${Math.round((item.probability || 0) * 100)}%`}
-                </Text>
               </View>
             </View>
           ))}
@@ -156,7 +154,7 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 22, fontWeight: "700", color: "#1a1a1a" },
   headerSub: { fontSize: 13, color: "#888", marginTop: 2 },
   urgencyCard: { margin: 16, borderRadius: 16, padding: 20 },
-  urgencyLabel: { fontSize: 22, fontWeight: "700", marginBottom: 6 },
+  urgencyLabel: { fontSize: 22, fontWeight: "700", marginBottom: 4 },
   urgencyScore: { fontSize: 15, fontWeight: "500", marginBottom: 4 },
   urgencyDate: { fontSize: 13 },
   section: {
@@ -169,30 +167,19 @@ const styles = StyleSheet.create({
     borderColor: "#e8e8e8",
   },
   sectionTitle: { fontSize: 15, fontWeight: "700", color: "#1a1a1a", marginBottom: 12 },
-  findingCard: {
-    borderBottomWidth: 0.5,
-    borderBottomColor: "#f0f0f0",
-    paddingVertical: 10,
-  },
+  findingCard: { borderBottomWidth: 0.5, borderBottomColor: "#f0f0f0", paddingVertical: 10 },
   findingHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 6,
   },
   findingName: { fontSize: 14, fontWeight: "600", color: "#1a1a1a" },
   findingBadge: { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 3 },
-  findingBadgeText: { fontSize: 11, fontWeight: "600" },
-  progressContainer: { flexDirection: "row", alignItems: "center", gap: 8 },
-  progressBg: {
-    flex: 1,
-    height: 8,
-    backgroundColor: "#f0f0f0",
-    borderRadius: 4,
-    overflow: "hidden",
-  },
+  findingBadgeText: { fontSize: 12, fontWeight: "600" },
+  progressContainer: { flexDirection: "row", alignItems: "center" },
+  progressBg: { flex: 1, height: 8, backgroundColor: "#f0f0f0", borderRadius: 4, overflow: "hidden" },
   progressFill: { height: "100%", borderRadius: 4 },
-  progressText: { fontSize: 12, color: "#666", width: 45, textAlign: "right" },
   disclaimer: {
     marginHorizontal: 16,
     marginBottom: 16,
