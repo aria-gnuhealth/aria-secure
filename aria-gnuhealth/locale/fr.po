@@ -1,0 +1,68 @@
+# French translations for aria_gnuhealth
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Analyse ARIA"
+msgstr "Analyse ARIA"
+
+msgid "Thorax (pneumonie, TB, COVID-19)"
+msgstr "Thorax (pneumonie, TB, COVID-19)"
+
+msgid "Fracture osseuse"
+msgstr "Fracture osseuse"
+
+msgid "En attente"
+msgstr "En attente"
+
+msgid "Envoyé à ARIA-Core"
+msgstr "Envoyé à ARIA-Core"
+
+msgid "Analyse complète"
+msgstr "Analyse complète"
+
+msgid "Erreur"
+msgstr "Erreur"
+
+msgid "Patient"
+msgstr "Patient"
+
+msgid "Professionnel de santé"
+msgstr "Professionnel de santé"
+
+msgid "Type d'analyse"
+msgstr "Type d'analyse"
+
+msgid "Image radiographique"
+msgstr "Image radiographique"
+
+msgid "Nom du fichier"
+msgstr "Nom du fichier"
+
+msgid "Score IA"
+msgstr "Score IA"
+
+msgid "Examen normal"
+msgstr "Examen normal"
+
+msgid "Pathologies détectées"
+msgstr "Pathologies détectées"
+
+msgid "URL Grad-CAM"
+msgstr "URL Grad-CAM"
+
+msgid "JSON brut"
+msgstr "JSON brut"
+
+msgid "ID ARIA"
+msgstr "ID ARIA"
+
+msgid "Notes du clinicien"
+msgstr "Notes du clinicien"
+
+msgid "Date envoi"
+msgstr "Date envoi"
+
+msgid "Date résultat"
+msgstr "Date résultat"

@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<form string="Analyse ARIA">
+    <!-- Informations patient -->
+    <label name="patient"/>
+    <field name="patient"/>
+    <label name="healthprof"/>
+    <field name="healthprof"/>
+    <label name="type_analyse"/>
+    <field name="type_analyse"/>
+    <label name="statut"/>
+    <field name="statut" readonly="1"/>
+
+    <separator string="Image radiographique" colspan="4"/>
+    <label name="image_nom"/>
+    <field name="image_nom"/>
+    <label name="image_data"/>
+    <field name="image_data" widget="image" colspan="3"/>
+
+    <separator string="Résultats ARIA-Core" colspan="4"/>
+    <label name="examen_normal"/>
+    <field name="examen_normal" widget="boolean"/>
+    <label name="score_confiance"/>
+    <field name="score_confiance" readonly="1"/>
+    <label name="pathologies_detectees"/>
+    <field name="pathologies_detectees" widget="text" colspan="3" readonly="1"/>
+    <label name="heatmap_url"/>
+    <field name="heatmap_url" readonly="1" colspan="3"/>
+
+    <separator string="Notes clinicien" colspan="4"/>
+    <label name="notes_clinicien"/>
+    <field name="notes_clinicien" widget="text" colspan="3"/>
+
+    <separator string="Dates" colspan="4"/>
+    <label name="date_envoi"/>
+    <field name="date_envoi" readonly="1"/>
+    <label name="date_resultat"/>
+    <field name="date_resultat" readonly="1"/>
+
+    <separator string="JSON brut (debug)" colspan="4"/>
+    <label name="resultats_json"/>
+    <field name="resultats_json" widget="text" colspan="3" readonly="1"/>
+</form>

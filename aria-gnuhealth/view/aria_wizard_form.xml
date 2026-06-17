@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<form string="Nouvelle analyse ARIA" col="4">
+    <label name="patient"/>
+    <field name="patient"/>
+    <label name="healthprof"/>
+    <field name="healthprof"/>
+    <label name="type_analyse"/>
+    <field name="type_analyse"/>
+    <separator string="Image radiographique" colspan="4"/>
+    <label name="image_nom"/>
+    <field name="image_nom"/>
+    <label name="image_data"/>
+    <field name="image_data" widget="image" colspan="3"/>
+</form>

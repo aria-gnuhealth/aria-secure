@@ -1,0 +1,4 @@
+# Dépendances du module aria-gnuhealth
+# La plupart sont déjà dans le venv GNU Health
+requests>=2.34.0
+# loguru>=0.7.0  # Optionnel pour les logs

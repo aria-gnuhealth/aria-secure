@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<tree string="Analyses ARIA">
+    <field name="patient"/>
+    <field name="type_analyse"/>
+    <field name="statut"/>
+    <field name="examen_normal"/>
+    <field name="score_confiance"/>
+    <field name="date_envoi"/>
+    <field name="date_resultat"/>
+    <field name="healthprof"/>
+</tree>
