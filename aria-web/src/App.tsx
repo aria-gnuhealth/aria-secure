@@ -1,12 +1,19 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
-import { Login } from './pages/Login';
-import { Register } from './pages/Register';
-import { Layout } from './components/Layout/Layout';
-import { Dashboard } from './pages/doctor/Dashboard';
-import { RoleRedirect } from './components/Layout/RoleRedirect';
-import { useAuthStore } from './stores/authStore';
+import { Login } from '@/pages/Login';
+import { Register } from '@/pages/Register';
+import { Layout } from '@/components/Layout/Layout';
+import { Dashboard } from '@/pages/doctor/Dashboard';
+import { RoleRedirect } from '@/components/Layout/RoleRedirect';
+import { useAuthStore } from '@/stores/authStore';
+import { PatientsList } from '@/pages/doctor/patients/PatientsList';
+import { PatientDetail } from '@/pages/doctor/patients/PatientDetail';
+import { NewAnalysis } from '@/pages/doctor/analyses/NewAnalysis';
+import { AnalysisResult } from '@/pages/doctor/analyses/AnalysisResult';
+import { AnalysesList } from '@/pages/doctor/analyses/AnalysesList';
+import { ReportGenerator } from '@/pages/doctor/reports/ReportGenerator';
+import { ReportsList } from '@/pages/doctor/reports/ReportsList';
 
 // Composant de redirection vers le bon dashboard
 const DashboardRedirect: React.FC = () => {
@@ -42,10 +49,15 @@ function App() {
           <Route index element={<Navigate to="/doctor/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
           {/* Autres routes docteur */}
-          <Route path="patients" element={<div>Liste des patients (à venir)</div>} />
-          <Route path="analyses" element={<div>Analyses (à venir)</div>} />
-          <Route path="reports" element={<div>Rapports (à venir)</div>} />
           <Route path="settings" element={<div>Paramètres (à venir)</div>} />
+          <Route path="patients" element={<PatientsList />} />
+          <Route path="patients/:id" element={<PatientDetail />} />
+          <Route path="patients/:patientId/new-analysis" element={<NewAnalysis />} />
+          <Route path="analyses" element={<AnalysesList />} />
+          <Route path="analysis/:analysisId" element={<AnalysisResult />} />
+          <Route path="reports" element={<ReportsList />} />
+          <Route path="reports/new/:analysisId" element={<ReportGenerator />} />
+
         </Route>
 
         {/* Routes pour le radiologue */}

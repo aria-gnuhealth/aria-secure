@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useAuthStore } from '../stores/authStore';
+import { useAuthStore } from '@/stores/authStore';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
@@ -39,7 +39,7 @@ export const useAuth = () => {
     password: string;
     first_name: string;
     last_name: string;
-    role?: 'doctor' | 'radiologist' | 'admin' | 'nurse' | 'auditor';
+    role?: string;
   }) => {
     setIsLoading(true);
     clearError();

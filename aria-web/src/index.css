@@ -1,0 +1,282 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary-50: #eef2f8;
+  --color-primary-100: #d9e2ef;
+  --color-primary-200: #b9cbdf;
+  --color-primary-300: #93aecb;
+  --color-primary-400: #6d8db5;
+  --color-primary-500: #1F6B9E;
+  --color-primary-600: #18557e;
+  --color-primary-700: #11405e;
+  --color-primary-800: #0a2a3f;
+  --color-primary-900: #03131f;
+  
+  --color-urgency-critique: #E74C3C;
+  --color-urgency-eleve: #E67E22;
+  --color-urgency-moyen: #F1C40F;
+  --color-urgency-faible: #2ECC71;
+  --color-urgency-normal: #27AE60;
+}
+
+/* ===== VARIABLES CSS LIGHT THEME ===== */
+:root {
+  --bg-body: #f9fafb;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f3f4f6;
+  --bg-input: #ffffff;
+  --bg-header: rgba(255, 255, 255, 0.7);
+  --text-primary: #111827;
+  --text-secondary: #6b7280;
+  --text-muted: #9ca3af;
+  --border-color: #e5e7eb;
+  --shadow-color: rgba(0, 0, 0, 0.1);
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.2);
+}
+
+/* ===== VARIABLES CSS DARK THEME ===== */
+.dark {
+  --bg-body: #030712;
+  --bg-card: #1f2937;
+  --bg-card-hover: #374151;
+  --bg-input: #374151;
+  --bg-header: rgba(17, 24, 39, 0.8);
+  --text-primary: #f9fafb;
+  --text-secondary: #9ca3af;
+  --text-muted: #6b7280;
+  --border-color: #374151;
+  --shadow-color: rgba(0, 0, 0, 0.3);
+  --glass-bg: rgba(17, 24, 39, 0.8);
+  --glass-border: rgba(55, 65, 81, 0.3);
+}
+
+/* ===== STYLES DE BASE ===== */
+body {
+  background-color: var(--bg-body);
+  color: var(--text-primary);
+  font-family: 'Inter', system-ui, sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* ===== SCROLLBAR ===== */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-body);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-primary-400);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary-500);
+}
+
+/* ===== BOUTONS ===== */
+.btn-primary {
+  background-color: var(--color-primary-500);
+  color: white;
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease-in-out;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-primary:hover {
+  background-color: var(--color-primary-600);
+}
+
+.btn-secondary {
+  background-color: #e5e7eb;
+  color: #1f2937;
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease-in-out;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-secondary:hover {
+  background-color: #d1d5db;
+}
+
+.dark .btn-secondary {
+  background-color: #374151;
+  color: #e5e7eb;
+}
+
+.dark .btn-secondary:hover {
+  background-color: #4b5563;
+}
+
+/* ===== CARTES ===== */
+.card {
+  background-color: var(--bg-card);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  box-shadow: 0 4px 6px -1px var(--shadow-color), 0 2px 4px -2px var(--shadow-color);
+  transition: all 0.3s ease;
+}
+
+.card:hover {
+  box-shadow: 0 10px 15px -3px var(--shadow-color);
+}
+
+/* ===== INPUTS ===== */
+.input {
+  width: 100%;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  outline: none;
+  background-color: var(--bg-input);
+  color: var(--text-primary);
+  transition: all 0.2s ease-in-out;
+}
+
+.input:focus {
+  border-color: var(--color-primary-500);
+  box-shadow: 0 0 0 2px rgba(31, 107, 158, 0.3);
+}
+
+.input::placeholder {
+  color: var(--text-muted);
+}
+
+/* ===== LABELS ===== */
+.label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 0.25rem;
+}
+
+/* ===== GLASSMORPHISM ===== */
+.glass {
+  background-color: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+}
+
+/* ===== BADGES URGENCE ===== */
+.badge-urgency-critique {
+  background-color: var(--color-urgency-critique);
+  color: white;
+  padding: 0.125rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.badge-urgency-eleve {
+  background-color: var(--color-urgency-eleve);
+  color: white;
+  padding: 0.125rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.badge-urgency-moyen {
+  background-color: var(--color-urgency-moyen);
+  color: #1f2937;
+  padding: 0.125rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.badge-urgency-faible {
+  background-color: var(--color-urgency-faible);
+  color: white;
+  padding: 0.125rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.badge-urgency-normal {
+  background-color: var(--color-urgency-normal);
+  color: white;
+  padding: 0.125rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* ===== ALERTES ===== */
+.alert-critique {
+  background-color: rgba(231, 76, 60, 0.1);
+  border: 1px solid var(--color-urgency-critique);
+  color: var(--color-urgency-critique);
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+}
+
+.alert-eleve {
+  background-color: rgba(230, 126, 34, 0.1);
+  border: 1px solid var(--color-urgency-eleve);
+  color: var(--color-urgency-eleve);
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+}
+
+.alert-moyen {
+  background-color: rgba(241, 196, 15, 0.1);
+  border: 1px solid var(--color-urgency-moyen);
+  color: #92400e;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+}
+
+.alert-faible {
+  background-color: rgba(46, 204, 113, 0.1);
+  border: 1px solid var(--color-urgency-faible);
+  color: var(--color-urgency-faible);
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+}
+
+.alert-normal {
+  background-color: rgba(39, 174, 96, 0.1);
+  border: 1px solid var(--color-urgency-normal);
+  color: var(--color-urgency-normal);
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+}
+
+/* ===== TEXT GRADIENT ===== */
+.text-gradient {
+  background: linear-gradient(to right, var(--color-primary-500), var(--color-primary-600));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ===== ANIMATIONS ===== */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
