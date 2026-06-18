@@ -26,6 +26,7 @@ class MinIOService:
     def _ensure_bucket(self):
         """Créer le bucket s'il n'existe pas"""
         try:
+            # Vérifier si le bucket existe
             if not self.client.bucket_exists(settings.MINIO_BUCKET):
                 self.client.make_bucket(settings.MINIO_BUCKET)
                 print(f"✅ Bucket '{settings.MINIO_BUCKET}' créé")
@@ -33,6 +34,7 @@ class MinIOService:
                 print(f"✅ Bucket '{settings.MINIO_BUCKET}' existe déjà")
         except S3Error as e:
             print(f"❌ Erreur bucket: {e}")
+            raise
 
     def upload_image(
         self,
@@ -46,27 +48,69 @@ class MinIOService:
 
         Args:
             image_data: Données binaires de l'image
-            content_type: Type MIME (image/jpeg, image/png, application/dicom)
+            content_type: Type MIME (image/jpeg, image/png, application/pdf, ...)
             patient_id: ID du patient
             original_filename: Nom original du fichier
 
         Returns:
             Chemin de l'objet dans MinIO
         """
-        # Générer un nom unique
-        extension = original_filename.split('.')[-1] if original_filename else 'jpg'
-        object_name = f"patients/{patient_id}/{datetime.now().strftime('%Y/%m/%d')}/{uuid.uuid4()}.{extension}"
+        try:
+            # Générer un nom unique
+            extension = original_filename.split('.')[-1] if original_filename else 'bin'
+            object_name = f"patients/{patient_id}/{datetime.now().strftime('%Y/%m/%d')}/{uuid.uuid4()}.{extension}"
 
-        # Upload
-        self.client.put_object(
-            bucket_name=settings.MINIO_BUCKET,
-            object_name=object_name,
-            data=io.BytesIO(image_data),
-            length=len(image_data),
-            content_type=content_type
-        )
+            # Upload
+            self.client.put_object(
+                bucket_name=settings.MINIO_BUCKET,
+                object_name=object_name,
+                data=io.BytesIO(image_data),
+                length=len(image_data),
+                content_type=content_type
+            )
 
-        return object_name
+            print(f"✅ Image uploadée: {object_name}")
+            return object_name
+
+        except S3Error as e:
+            print(f"❌ Erreur upload image: {e}")
+            raise
+
+    def upload_pdf(
+        self,
+        pdf_data: bytes,
+        patient_id: str,
+        analysis_id: str
+    ) -> str:
+        """
+        Upload un rapport PDF dans MinIO
+
+        Args:
+            pdf_data: Données binaires du PDF
+            patient_id: ID du patient
+            analysis_id: ID de l'analyse
+
+        Returns:
+            Chemin de l'objet dans MinIO
+        """
+        try:
+            object_name = f"reports/analysis_{analysis_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+
+            # Upload
+            self.client.put_object(
+                bucket_name=settings.MINIO_BUCKET,
+                object_name=object_name,
+                data=io.BytesIO(pdf_data),
+                length=len(pdf_data),
+                content_type="application/pdf"
+            )
+
+            print(f"✅ PDF uploadé: {object_name}")
+            return object_name
+
+        except S3Error as e:
+            print(f"❌ Erreur upload PDF: {e}")
+            raise
 
     def get_image_url(self, object_path: str, expiry_minutes: int = 60) -> str:
         """
@@ -79,12 +123,16 @@ class MinIOService:
         Returns:
             URL pré-signée
         """
-        url = self.client.presigned_get_object(
-            bucket_name=settings.MINIO_BUCKET,
-            object_name=object_path,
-            expires=timedelta(minutes=expiry_minutes)
-        )
-        return url
+        try:
+            url = self.client.presigned_get_object(
+                bucket_name=settings.MINIO_BUCKET,
+                object_name=object_path,
+                expires=timedelta(minutes=expiry_minutes)
+            )
+            return url
+        except S3Error as e:
+            print(f"❌ Erreur génération URL: {e}")
+            return None
 
     def get_image_data(self, object_path: str) -> Optional[bytes]:
         """
@@ -124,6 +172,7 @@ class MinIOService:
                 bucket_name=settings.MINIO_BUCKET,
                 object_name=object_path
             )
+            print(f"🗑️ Image supprimée: {object_path}")
             return True
         except S3Error as e:
             print(f"❌ Erreur suppression image: {e}")
@@ -161,6 +210,7 @@ class MinIOService:
         except S3Error as e:
             print(f"❌ Erreur liste images: {e}")
             return []
+
 
 # Instance globale
 minio_service = MinIOService()

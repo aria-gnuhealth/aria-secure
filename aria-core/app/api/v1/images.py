@@ -301,3 +301,37 @@ async def download_image(
             "Content-Disposition": f"inline; filename=image_{image_id}.{image.format}"
         }
     )
+    
+@router.get("/images/heatmap/{analysis_id}")
+async def get_heatmap_url(
+    analysis_id: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Récupère l'URL de la heatmap pour une analyse.
+    """
+    try:
+        analysis_uuid = uuid.UUID(analysis_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="ID analyse invalide"
+        )
+
+    analysis = db.query(models.Analysis).filter(models.Analysis.id == analysis_uuid).first()
+    if not analysis:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Analyse non trouvée"
+        )
+
+    if not analysis.heatmap_path:
+        return {"heatmap_url": None}
+
+    # Générer une URL pré-signée
+    try:
+        url = minio_service.get_image_url(analysis.heatmap_path)
+        return {"heatmap_url": url}
+    except Exception as e:
+        return {"heatmap_url": None}
