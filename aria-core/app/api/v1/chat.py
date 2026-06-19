@@ -1,0 +1,631 @@
+"""
+Endpoints pour le chat docteur-radiologue
+"""
+
+from fastapi import APIRouter, Depends, HTTPException, status, Query, WebSocket, WebSocketDisconnect
+from sqlalchemy.orm import Session
+from sqlalchemy import or_, and_, desc
+from typing import Optional, List
+from datetime import datetime
+import uuid
+import json
+import logging
+
+from app.db.session import get_db
+from app.db import models
+from app.core.security import get_current_user
+from app.models.chat import (
+    DiscussionCreate,
+    DiscussionUpdate,
+    DiscussionResponse,
+    MessageCreate,
+    MessageResponse,
+    NotificationResponse,
+    DiscussionListResponse
+)
+
+logger = logging.getLogger(__name__)
+router = APIRouter()
+
+
+# ============================================================
+# WebSocket Manager (pour le chat en temps réel)
+# ============================================================
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: dict[str, WebSocket] = {}
+        self.user_connections: dict[str, str] = {}  # user_id -> connection_id
+
+    async def connect(self, websocket: WebSocket, user_id: str):
+        await websocket.accept()
+        connection_id = str(uuid.uuid4())
+        self.active_connections[connection_id] = websocket
+        self.user_connections[user_id] = connection_id
+        logger.info(f"✅ User {user_id} connected via WebSocket")
+
+    def disconnect(self, user_id: str):
+        if user_id in self.user_connections:
+            conn_id = self.user_connections[user_id]
+            del self.active_connections[conn_id]
+            del self.user_connections[user_id]
+            logger.info(f"❌ User {user_id} disconnected")
+
+    async def send_message(self, user_id: str, message: dict):
+        if user_id in self.user_connections:
+            conn_id = self.user_connections[user_id]
+            websocket = self.active_connections[conn_id]
+            try:
+                await websocket.send_text(json.dumps(message))
+                return True
+            except Exception as e:
+                logger.error(f"Erreur envoi message WebSocket: {e}")
+                return False
+        return False
+
+
+manager = ConnectionManager()
+
+
+# ============================================================
+# WebSocket Endpoint
+# ============================================================
+@router.websocket("/ws/chat")
+async def websocket_chat(websocket: WebSocket):
+    user_id = websocket.query_params.get("user_id")
+    if not user_id:
+        await websocket.close(code=1008)
+        return
+    
+    await manager.connect(websocket, user_id)
+    
+    try:
+        while True:
+            data = await websocket.receive_text()
+            try:
+                message_data = json.loads(data)
+                # Traiter le message (sauvegarder en base, etc.)
+                # Ici on ne fait que relayer
+                await websocket.send_text(json.dumps({
+                    "type": "echo",
+                    "data": message_data
+                }))
+            except json.JSONDecodeError:
+                await websocket.send_text(json.dumps({
+                    "type": "error",
+                    "message": "Format JSON invalide"
+                }))
+    except WebSocketDisconnect:
+        manager.disconnect(user_id)
+
+
+# ============================================================
+# Discussions Endpoints
+# ============================================================
+@router.post("/chat/discussions", response_model=DiscussionResponse, status_code=status.HTTP_201_CREATED)
+async def create_discussion(
+    data: DiscussionCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Crée une nouvelle discussion entre un docteur et un radiologue.
+    """
+    # Vérifier que l'analyse existe
+    try:
+        analysis_uuid = uuid.UUID(data.analysis_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="ID analyse invalide"
+        )
+    
+    analysis = db.query(models.Analysis).filter(models.Analysis.id == analysis_uuid).first()
+    if not analysis:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Analyse non trouvée"
+        )
+    
+    # Vérifier que le radiologue existe
+    try:
+        radiologist_uuid = uuid.UUID(data.radiologist_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="ID radiologue invalide"
+        )
+    
+    radiologist = db.query(models.User).filter(
+        models.User.id == radiologist_uuid,
+        models.User.role == "radiologist"
+    ).first()
+    
+    if not radiologist:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Radiologue non trouvé"
+        )
+    
+    # Vérifier qu'une discussion n'existe pas déjà
+    existing = db.query(models.Discussion).filter(
+        models.Discussion.analysis_id == analysis_uuid
+    ).first()
+    
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Une discussion existe déjà pour cette analyse"
+        )
+    
+    # Créer la discussion
+    discussion = models.Discussion(
+        id=uuid.uuid4(),
+        analysis_id=analysis_uuid,
+        doctor_id=current_user.id,
+        radiologist_id=radiologist_uuid,
+        status="open"
+    )
+    db.add(discussion)
+    db.flush()
+    
+    # Si un message initial est fourni, l'ajouter
+    if data.message and data.message.strip():
+        message = models.Message(
+            id=uuid.uuid4(),
+            discussion_id=discussion.id,
+            sender_id=current_user.id,
+            content=data.message.strip(),
+            attachment_url=f"/api/v1/reports/analysis/{analysis_uuid}/reports"  # Lien vers le rapport
+        )
+        db.add(message)
+    
+    db.commit()
+    db.refresh(discussion)
+    
+    # Créer une notification pour le radiologue
+    notification = models.Notification(
+        id=uuid.uuid4(),
+        user_id=radiologist_uuid,
+        type="new_discussion",
+        title="Nouvelle demande d'analyse",
+        message=f"Le docteur {current_user.first_name} {current_user.last_name} demande votre avis.",
+        link=f"/doctor/chat/{discussion.id}"
+    )
+    db.add(notification)
+    db.commit()
+    
+    response_data = {
+        "id": discussion.id,
+        "analysis_id": discussion.analysis_id,
+        "doctor_id": discussion.doctor_id,
+        "radiologist_id": discussion.radiologist_id,
+        "status": discussion.status,
+        "reviewed_by": discussion.reviewed_by,
+        "reviewed_at": discussion.reviewed_at,
+        "review_comment": discussion.review_comment,
+        "created_at": discussion.created_at,
+        "updated_at": discussion.updated_at,
+        "last_message": None,  # Pas de dernier message
+        "unread_count": 0,
+        "analysis_patient_name": None,
+        "analysis_urgency": None
+    }
+
+    return DiscussionResponse(**response_data)
+    
+
+
+@router.get("/chat/discussions", response_model=DiscussionListResponse)
+async def get_discussions(
+    page: int = Query(1, ge=1),
+    per_page: int = Query(20, ge=1, le=100),
+    status: Optional[str] = Query(None, description="open, pending_review, reviewed, closed"),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Liste les discussions de l'utilisateur.
+    """
+    query = db.query(models.Discussion).filter(
+        or_(
+            models.Discussion.doctor_id == current_user.id,
+            models.Discussion.radiologist_id == current_user.id
+        )
+    )
+    
+    if status:
+        query = query.filter(models.Discussion.status == status)
+    
+    total = query.count()
+    offset = (page - 1) * per_page
+    discussions = query.order_by(desc(models.Discussion.updated_at)).offset(offset).limit(per_page).all()
+    pages = (total + per_page - 1) // per_page if total > 0 else 1
+    
+    result = []
+    for d in discussions:
+        # Récupérer le dernier message
+        last_message = db.query(models.Message).filter(
+            models.Message.discussion_id == d.id
+        ).order_by(desc(models.Message.created_at)).first()
+        
+        # Compter les messages non lus
+        unread_count = db.query(models.Message).filter(
+            models.Message.discussion_id == d.id,
+            models.Message.sender_id != current_user.id,
+            models.Message.read_at.is_(None)
+        ).count()
+        
+        # Récupérer le patient
+        patient = db.query(models.Patient).filter(
+            models.Patient.id == d.analysis.patient_id
+        ).first() if d.analysis else None
+        
+        result.append({
+            "id": d.id,
+            "analysis_id": d.analysis_id,
+            "doctor_id": d.doctor_id,
+            "radiologist_id": d.radiologist_id,
+            "status": d.status,
+            "reviewed_by": d.reviewed_by,
+            "reviewed_at": d.reviewed_at,
+            "review_comment": d.review_comment,
+            "created_at": d.created_at,
+            "updated_at": d.updated_at,
+            "last_message": MessageResponse.model_validate(last_message) if last_message else None,
+            "unread_count": unread_count,
+            "analysis_patient_name": f"{patient.first_name} {patient.last_name}" if patient else None,
+            "analysis_urgency": d.analysis.urgency_level if d.analysis else None
+        })
+    
+    return {
+        "success": True,
+        "total": total,
+        "page": page,
+        "per_page": per_page,
+        "pages": pages,
+        "discussions": result
+    }
+
+
+@router.get("/chat/discussions/{discussion_id}", response_model=DiscussionResponse)
+async def get_discussion(
+    discussion_id: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Récupère une discussion.
+    """
+    try:
+        discussion_uuid = uuid.UUID(discussion_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="ID discussion invalide"
+        )
+    
+    discussion = db.query(models.Discussion).filter(
+        models.Discussion.id == discussion_uuid
+    ).first()
+    
+    if not discussion:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Discussion non trouvée"
+        )
+    
+    if discussion.doctor_id != current_user.id and discussion.radiologist_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Vous n'avez pas accès à cette discussion"
+        )
+    
+    return DiscussionResponse.model_validate(discussion)
+
+
+@router.put("/chat/discussions/{discussion_id}/status", response_model=DiscussionResponse)
+async def update_discussion_status(
+    discussion_id: str,
+    data: DiscussionUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Met à jour le statut d'une discussion (validation par le radiologue).
+    """
+    try:
+        discussion_uuid = uuid.UUID(discussion_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="ID discussion invalide"
+        )
+    
+    discussion = db.query(models.Discussion).filter(
+        models.Discussion.id == discussion_uuid
+    ).first()
+    
+    if not discussion:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Discussion non trouvée"
+        )
+    
+    # Seul le radiologue peut changer le statut
+    if discussion.radiologist_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Seul le radiologue peut modifier le statut"
+        )
+    
+    if data.status:
+        discussion.status = data.status
+        if data.status == "reviewed":
+            discussion.reviewed_by = current_user.id
+            discussion.reviewed_at = datetime.utcnow()
+            discussion.review_comment = data.review_comment
+            
+            # Notifier le docteur
+            notification = models.Notification(
+                id=uuid.uuid4(),
+                user_id=discussion.doctor_id,
+                type="review_completed",
+                title="Analyse validée",
+                message=f"Le radiologue a validé l'analyse.",
+                link=f"/doctor/chat/{discussion.id}"
+            )
+            db.add(notification)
+            
+            await manager.send_message(str(discussion.doctor_id), {
+                "type": "review_completed",
+                "discussion_id": str(discussion.id),
+                "status": data.status
+            })
+    
+    db.commit()
+    db.refresh(discussion)
+    
+    return DiscussionResponse.model_validate(discussion)
+
+
+# ============================================================
+# Messages Endpoints
+# ============================================================
+@router.get("/chat/discussions/{discussion_id}/messages", response_model=List[MessageResponse])
+async def get_messages(
+    discussion_id: str,
+    limit: int = Query(50, ge=1, le=200),
+    before: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Récupère les messages d'une discussion.
+    """
+    try:
+        discussion_uuid = uuid.UUID(discussion_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="ID discussion invalide"
+        )
+    
+    discussion = db.query(models.Discussion).filter(
+        models.Discussion.id == discussion_uuid
+    ).first()
+    
+    if not discussion:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Discussion non trouvée"
+        )
+    
+    if discussion.doctor_id != current_user.id and discussion.radiologist_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Vous n'avez pas accès à cette discussion"
+        )
+    
+    query = db.query(models.Message).filter(
+        models.Message.discussion_id == discussion_uuid
+    )
+    
+    if before:
+        try:
+            before_uuid = uuid.UUID(before)
+            query = query.filter(models.Message.id < before_uuid)
+        except ValueError:
+            pass
+    
+    messages = query.order_by(desc(models.Message.created_at)).limit(limit).all()
+    messages.reverse()  # Du plus ancien au plus récent
+    
+    # Marquer les messages comme lus
+    unread = db.query(models.Message).filter(
+        models.Message.discussion_id == discussion_uuid,
+        models.Message.sender_id != current_user.id,
+        models.Message.read_at.is_(None)
+    ).all()
+    
+    for msg in unread:
+        msg.read_at = datetime.utcnow()
+    
+    db.commit()
+    
+    result = []
+    for msg in messages:
+        sender = db.query(models.User).filter(models.User.id == msg.sender_id).first()
+        result.append({
+            "id": msg.id,
+            "discussion_id": msg.discussion_id,
+            "sender_id": msg.sender_id,
+            "sender_name": f"{sender.first_name} {sender.last_name}" if sender else None,
+            "sender_role": sender.role if sender else None,
+            "content": msg.content,
+            "attachment_url": msg.attachment_url,
+            "attachment_type": msg.attachment_type,
+            "attachment_name": msg.attachment_name,
+            "read_at": msg.read_at,
+            "created_at": msg.created_at
+        })
+    
+    return result
+
+
+@router.post("/chat/discussions/{discussion_id}/messages", response_model=MessageResponse, status_code=status.HTTP_201_CREATED)
+async def send_message(
+    discussion_id: str,
+    data: MessageCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Envoie un message dans une discussion.
+    """
+    try:
+        discussion_uuid = uuid.UUID(discussion_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="ID discussion invalide"
+        )
+    
+    discussion = db.query(models.Discussion).filter(
+        models.Discussion.id == discussion_uuid
+    ).first()
+    
+    if not discussion:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Discussion non trouvée"
+        )
+    
+    if discussion.doctor_id != current_user.id and discussion.radiologist_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Vous n'avez pas accès à cette discussion"
+        )
+    
+    # Créer le message
+    message = models.Message(
+        id=uuid.uuid4(),
+        discussion_id=discussion_uuid,
+        sender_id=current_user.id,
+        content=data.content,
+        attachment_url=data.attachment_url,
+        attachment_type=data.attachment_type,
+        attachment_name=data.attachment_name
+    )
+    db.add(message)
+    
+    # Mettre à jour le timestamp de la discussion
+    discussion.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(message)
+    
+    # Déterminer le destinataire
+    recipient_id = discussion.radiologist_id if current_user.id == discussion.doctor_id else discussion.doctor_id
+    
+    # Créer une notification
+    notification = models.Notification(
+        id=uuid.uuid4(),
+        user_id=recipient_id,
+        type="new_message",
+        title="Nouveau message",
+        message=f"{current_user.first_name} {current_user.last_name}: {data.content[:50]}...",
+        link=f"/doctor/chat/{discussion.id}"
+    )
+    db.add(notification)
+    db.commit()
+    
+    # Envoyer notification WebSocket
+    await manager.send_message(str(recipient_id), {
+        "type": "new_message",
+        "discussion_id": str(discussion.id),
+        "sender_id": str(current_user.id),
+        "sender_name": f"{current_user.first_name} {current_user.last_name}",
+        "content": data.content[:50],
+        "message_id": str(message.id)
+    })
+    
+    return MessageResponse.model_validate(message)
+
+
+# ============================================================
+# Notifications Endpoints
+# ============================================================
+@router.get("/chat/notifications", response_model=List[NotificationResponse])
+async def get_notifications(
+    limit: int = Query(20, ge=1, le=100),
+    unread_only: bool = Query(False),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Récupère les notifications de l'utilisateur.
+    """
+    query = db.query(models.Notification).filter(
+        models.Notification.user_id == current_user.id
+    )
+    
+    if unread_only:
+        query = query.filter(models.Notification.is_read == False)
+    
+    notifications = query.order_by(desc(models.Notification.created_at)).limit(limit).all()
+    
+    return [NotificationResponse.model_validate(n) for n in notifications]
+
+
+@router.put("/chat/notifications/{notification_id}/read")
+async def mark_notification_read(
+    notification_id: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Marque une notification comme lue.
+    """
+    try:
+        notif_uuid = uuid.UUID(notification_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="ID notification invalide"
+        )
+    
+    notification = db.query(models.Notification).filter(
+        models.Notification.id == notif_uuid,
+        models.Notification.user_id == current_user.id
+    ).first()
+    
+    if not notification:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Notification non trouvée"
+        )
+    
+    notification.is_read = True
+    notification.read_at = datetime.utcnow()
+    db.commit()
+    
+    return {"success": True, "message": "Notification marquée comme lue"}
+
+
+@router.put("/chat/notifications/read-all")
+async def mark_all_notifications_read(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Marque toutes les notifications comme lues.
+    """
+    db.query(models.Notification).filter(
+        models.Notification.user_id == current_user.id,
+        models.Notification.is_read == False
+    ).update({
+        "is_read": True,
+        "read_at": datetime.utcnow()
+    })
+    db.commit()
+    
+    return {"success": True, "message": "Toutes les notifications ont été marquées comme lues"}

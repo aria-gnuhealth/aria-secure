@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Request
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Request, Query
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, timezone
 import uuid
 import secrets
+from typing import Optional, List
 
 from app.core.config import settings
 from app.core.security import (
@@ -391,3 +392,137 @@ async def forgot_password(
         message="Si un compte avec cet email existe et est vérifié, vous recevrez un lien de réinitialisation.",
         success=True
     )
+    
+@router.get("/users", response_model=List[UserResponse])
+async def get_users_by_role(
+    role: Optional[str] = Query(None, description="Filtrer par rôle (doctor, radiologist, nurse, admin, auditor)"),
+    is_active: Optional[bool] = Query(None, description="Filtrer par statut actif"),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Récupère la liste des utilisateurs.
+    Peut être filtrée par rôle et par statut actif.
+    Réservé aux administrateurs et aux radiologues.
+    """
+    # Vérifier les permissions
+    if current_user.role not in ["admin", "radiologist", "doctor"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Accès réservé aux administrateurs et radiologues"
+        )
+    
+    query = db.query(models.User)
+    
+    if role:
+        query = query.filter(models.User.role == role)
+    
+    if is_active is not None:
+        query = query.filter(models.User.is_active == is_active)
+    
+    # Exclure l'utilisateur courant
+    query = query.filter(models.User.id != current_user.id)
+    
+    users = query.order_by(models.User.last_login.desc().nullslast()).all()
+    
+    return [UserResponse.model_validate(u) for u in users]
+
+
+@router.get("/users/{user_id}", response_model=UserResponse)
+async def get_user_by_id(
+    user_id: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Récupère un utilisateur par son ID.
+    """
+    if current_user.role not in ["admin", "radiologist"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Accès réservé aux administrateurs et radiologues"
+        )
+    
+    try:
+        user_uuid = uuid.UUID(user_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="ID utilisateur invalide"
+        )
+    
+    user = db.query(models.User).filter(models.User.id == user_uuid).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Utilisateur non trouvé"
+        )
+    
+    return UserResponse.model_validate(user)
+
+@router.get("/users", response_model=List[UserResponse])
+async def get_users_by_role(
+    role: Optional[str] = Query(None, description="Filtrer par rôle (doctor, radiologist, nurse, admin, auditor)"),
+    is_active: Optional[bool] = Query(None, description="Filtrer par statut actif"),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Récupère la liste des utilisateurs.
+    Peut être filtrée par rôle et par statut actif.
+    Réservé aux administrateurs et aux radiologues.
+    """
+    # Vérifier les permissions
+    if current_user.role not in ["admin", "radiologist", "doctor"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Accès réservé aux administrateurs et radiologues et docteurs"
+        )
+    
+    query = db.query(models.User)
+    
+    if role:
+        query = query.filter(models.User.role == role)
+    
+    if is_active is not None:
+        query = query.filter(models.User.is_active == is_active)
+    
+    # Exclure l'utilisateur courant
+    query = query.filter(models.User.id != current_user.id)
+    
+    users = query.order_by(models.User.last_login.desc().nullslast()).all()
+    
+    return [UserResponse.model_validate(u) for u in users]
+
+
+@router.get("/users/{user_id}", response_model=UserResponse)
+async def get_user_by_id(
+    user_id: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Récupère un utilisateur par son ID.
+    """
+    if current_user.role not in ["admin", "radiologist"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Accès réservé aux administrateurs et radiologues"
+        )
+    
+    try:
+        user_uuid = uuid.UUID(user_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="ID utilisateur invalide"
+        )
+    
+    user = db.query(models.User).filter(models.User.id == user_uuid).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Utilisateur non trouvé"
+        )
+    
+    return UserResponse.model_validate(user)

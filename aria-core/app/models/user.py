@@ -59,7 +59,7 @@ class UserResponse(BaseModel):
     is_active: bool
     is_email_verified: bool  # ⚠️ AJOUTÉ
     created_at: datetime
-    last_login: Optional[datetime]
+    last_login: Optional[datetime] = None
 
     class Config:
         from_attributes = True

@@ -146,6 +146,7 @@ class Analysis(Base):
     
     # ⚠️ AJOUTER CETTE LIGNE SI MANQUANTE
     results_json = Column(Text, nullable=True)  # Stockage JSON des résultats
+    discussion = relationship("Discussion", back_populates="analysis", uselist=False, cascade="all, delete-orphan")
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     completed_at = Column(DateTime(timezone=True), nullable=True)
@@ -227,3 +228,85 @@ class AuditLog(Base):
 
     def __repr__(self):
         return f"<AuditLog {self.action}>"
+    
+
+# Ajouter ces classes après la classe AuditLog
+
+class Discussion(Base):
+    """Discussion entre un docteur et un radiologue autour d'une analyse"""
+    __tablename__ = "discussions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    analysis_id = Column(UUID(as_uuid=True), ForeignKey("analyses.id"), nullable=False, index=True)
+    doctor_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    radiologist_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    
+    status = Column(String(50), default="open")  # open, pending_review, reviewed, closed
+    reviewed_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    reviewed_at = Column(DateTime(timezone=True), nullable=True)
+    review_comment = Column(Text, nullable=True)
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Relationships
+    analysis = relationship("Analysis", back_populates="discussion")
+    doctor = relationship("User", foreign_keys=[doctor_id])
+    radiologist = relationship("User", foreign_keys=[radiologist_id])
+    reviewer = relationship("User", foreign_keys=[reviewed_by])
+    messages = relationship("Message", back_populates="discussion", cascade="all, delete-orphan")
+
+    def __repr__(self):
+        return f"<Discussion {self.id} - {self.status}>"
+
+
+class Message(Base):
+    """Message échangé dans une discussion"""
+    __tablename__ = "messages"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    discussion_id = Column(UUID(as_uuid=True), ForeignKey("discussions.id"), nullable=False, index=True)
+    sender_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    
+    content = Column(Text, nullable=False)
+    attachment_url = Column(String(500), nullable=True)
+    attachment_type = Column(String(50), nullable=True)  # report, image, etc.
+    attachment_name = Column(String(255), nullable=True)
+    
+    read_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    discussion = relationship("Discussion", back_populates="messages")
+    sender = relationship("User", foreign_keys=[sender_id])
+
+    def __repr__(self):
+        return f"<Message {self.id} - {self.content[:30]}>"
+
+
+class Notification(Base):
+    """Notification pour les utilisateurs"""
+    __tablename__ = "notifications"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    
+    type = Column(String(50), nullable=False)  # new_message, report_review, validation, etc.
+    title = Column(String(255), nullable=False)
+    message = Column(Text, nullable=True)
+    link = Column(String(500), nullable=True)
+    
+    is_read = Column(Boolean, default=False)
+    read_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    user = relationship("User", foreign_keys=[user_id])
+
+    def __repr__(self):
+        return f"<Notification {self.type} - {self.title}>"
+
+
+# Ajouter la relation dans Analysis
+# Dans la classe Analysis, ajouter :
+# discussion = relationship("Discussion", back_populates="analysis", uselist=False)
