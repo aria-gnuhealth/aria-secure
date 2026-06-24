@@ -96,6 +96,17 @@ async def generate_analysis_report(
             "urgency": analysis.urgency_level or "MOYEN"
         })
 
+    # Récupérer info validation radiologue
+    validator_info = None
+    if analysis.validated_by:
+        validator = db.query(models.User).filter(models.User.id == analysis.validated_by).first()
+        if validator:
+            validator_info = {
+                "name": f"Dr. {validator.first_name} {validator.last_name}",
+                "validated_at": analysis.validated_at.strftime("%d/%m/%Y à %H:%M") if analysis.validated_at else None,
+                "comment": analysis.clinical_feedback or ""
+            }
+
     # Déterminer le type d'analyse
     ai_model = None
     if analysis.ai_model_id:
@@ -147,7 +158,8 @@ async def generate_analysis_report(
             patient_info=patient_info,
             results=chexpert_results,
             findings=findings,
-            image_url=image_url
+            image_url=image_url,
+            validator_info=validator_info
         )
     else:
         mura_result = {
@@ -161,7 +173,8 @@ async def generate_analysis_report(
             analysis_id=analysis_id,
             patient_info=patient_info,
             result=mura_result,
-            image_url=image_url
+            image_url=image_url,
+            validator_info=validator_info
         )
 
     if not pdf_bytes:

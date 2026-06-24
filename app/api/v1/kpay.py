@@ -204,3 +204,101 @@ async def can_analyze(
         return {"can_analyze": True, "type": "premium"}
 
     return {"can_analyze": True, "type": "free"}
+
+
+@router.get("/subscription/status")
+async def get_subscription_status(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Vérifier le statut d'abonnement de l'utilisateur."""
+    from sqlalchemy import text
+    from datetime import datetime
+    
+    result = db.execute(
+        text("""
+            SELECT status, end_date, start_date, amount
+            FROM subscriptions 
+            WHERE user_id = :uid 
+            AND status = 'active'
+            AND end_date > NOW()
+            ORDER BY end_date DESC
+            LIMIT 1
+        """),
+        {"uid": str(current_user.id)}
+    ).fetchone()
+    
+    if result:
+        return {
+            "is_premium": True,
+            "status": "active",
+            "end_date": result.end_date.isoformat() if result.end_date else None,
+            "start_date": result.start_date.isoformat() if result.start_date else None,
+            "amount": result.amount,
+            "days_remaining": (result.end_date - datetime.utcnow()).days if result.end_date else 0
+        }
+    
+    return {
+        "is_premium": False,
+        "status": "inactive",
+        "end_date": None,
+        "days_remaining": 0
+    }
+
+
+@router.post("/subscription/activate-kpay")
+async def activate_kpay_subscription(
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Activer un abonnement après paiement K-PAY réussi."""
+    from sqlalchemy import text
+    from datetime import datetime, timedelta
+    import uuid as uuid_lib
+    
+    reference = payload.get("reference")
+    kpay_id = payload.get("kpay_id")
+    
+    now = datetime.utcnow()
+    end_date = now + timedelta(days=30)
+    
+    # Vérifier si abonnement actif existe
+    existing = db.execute(
+        text("SELECT id FROM subscriptions WHERE user_id = :uid AND status = 'active' AND end_date > NOW()"),
+        {"uid": str(current_user.id)}
+    ).fetchone()
+    
+    if existing:
+        # Prolonger l'abonnement existant
+        db.execute(
+            text("UPDATE subscriptions SET end_date = end_date + INTERVAL '30 days', updated_at = NOW() WHERE id = :sid"),
+            {"sid": str(existing.id)}
+        )
+    else:
+        # Créer nouvel abonnement
+        db.execute(
+            text("""
+                INSERT INTO subscriptions (id, user_id, status, plan, start_date, end_date, cinetpay_transaction_id, amount, currency, created_at, updated_at)
+                VALUES (:id, :uid, 'active', 'premium', :start, :end, :txn, 2000, 'XAF', NOW(), NOW())
+                ON CONFLICT (user_id) DO UPDATE SET
+                    status = 'active',
+                    end_date = :end,
+                    cinetpay_transaction_id = :txn,
+                    updated_at = NOW()
+            """),
+            {
+                "id": str(uuid_lib.uuid4()),
+                "uid": str(current_user.id),
+                "start": now,
+                "end": end_date,
+                "txn": reference or kpay_id or "KPAY-MANUAL"
+            }
+        )
+    
+    db.commit()
+    return {
+        "success": True,
+        "message": "Abonnement Premium activé pour 30 jours",
+        "end_date": end_date.isoformat()
+    }

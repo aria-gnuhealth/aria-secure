@@ -641,6 +641,33 @@ class PDFReportGenerator:
         story.extend(_section_header("Recommandations cliniques", S, uw))
         story.extend(_recommendations(urgency_level, [], S))
 
+        # ── Validation radiologue ─────────────────────────────────────────
+        if validator_info:
+            story.append(Spacer(1, 6 * mm))
+            story.extend(_section_header("Validation par le radiologue", S, uw))
+            story.append(Paragraph(
+                f"✅ Cette analyse a été vérifiée et validée par <b>{validator_info['name']}</b> "
+                f"le {validator_info['validated_at']}.",
+                S["body"]
+            ))
+            if validator_info.get("comment"):
+                story.append(Spacer(1, 3 * mm))
+                story.append(Paragraph(
+                    f"<b>Commentaire clinique :</b> {validator_info['comment']}",
+                    S["body"]
+                ))
+            story.append(Spacer(1, 3 * mm))
+            story.append(Paragraph(
+                "Ce rapport a été relu et approuvé par un professionnel de santé qualifié.",
+                S["small"]
+            ))
+        else:
+            story.append(Spacer(1, 4 * mm))
+            story.append(Paragraph(
+                "⚠️ Ce rapport n\'a pas encore été validé par un radiologue.",
+                S["small"]
+            ))
+
         # ── Note légale ───────────────────────────────────────────────────
         story.append(Spacer(1, 6 * mm))
         story.append(HRFlowable(width=uw, thickness=0.5, color=C["rule"]))
@@ -736,6 +763,33 @@ class PDFReportGenerator:
         if result.get("recommandation"):
             custom.append(result["recommandation"])
         story.extend(_recommendations(urgency if is_fracture else "NORMAL", custom, S))
+
+        # ── Validation radiologue ─────────────────────────────────────────
+        if validator_info:
+            story.append(Spacer(1, 6 * mm))
+            story.extend(_section_header("Validation par le radiologue", S, uw))
+            story.append(Paragraph(
+                f"✅ Cette analyse a été vérifiée et validée par <b>{validator_info['name']}</b> "
+                f"le {validator_info['validated_at']}.",
+                S["body"]
+            ))
+            if validator_info.get("comment"):
+                story.append(Spacer(1, 3 * mm))
+                story.append(Paragraph(
+                    f"<b>Commentaire clinique :</b> {validator_info['comment']}",
+                    S["body"]
+                ))
+            story.append(Spacer(1, 3 * mm))
+            story.append(Paragraph(
+                "Ce rapport a été relu et approuvé par un professionnel de santé qualifié.",
+                S["small"]
+            ))
+        else:
+            story.append(Spacer(1, 4 * mm))
+            story.append(Paragraph(
+                "⚠️ Ce rapport n\'a pas encore été validé par un radiologue.",
+                S["small"]
+            ))
 
         # ── Note légale ───────────────────────────────────────────────────
         story.append(Spacer(1, 6 * mm))
