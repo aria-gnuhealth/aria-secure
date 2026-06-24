@@ -2,3 +2,8 @@ __pycache__/
 *.pyc
 .env
 venv/
+ml/models/*.onnx
+ml/models/*.onnx.data
+ml/models/*.png
+ml/models/*.jpg
+ml/models/*.jpeg
