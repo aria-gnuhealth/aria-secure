@@ -7,3 +7,4 @@ ml/models/*.onnx.data
 ml/models/*.png
 ml/models/*.jpg
 ml/models/*.jpeg
+.env
