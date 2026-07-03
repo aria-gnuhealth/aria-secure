@@ -1,0 +1,51 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Fond -->
+  <rect width="1024" height="1024" fill="#0A2A3F" rx="180"/>
+  
+  <!-- Cercle principal -->
+  <circle cx="512" cy="420" r="260" fill="#0F3554"/>
+  <circle cx="512" cy="420" r="260" fill="none" stroke="#1F6B9E" stroke-width="6"/>
+  
+  <!-- Poumon gauche -->
+  <path d="M420 330 C390 322 365 338 362 368 C358 398 362 448 372 472 C380 490 396 498 408 492 C420 486 424 470 427 448 C430 426 430 404 427 382 Z" fill="#1F6B9E"/>
+  
+  <!-- Poumon droit -->
+  <path d="M604 330 C634 322 659 338 662 368 C666 398 662 448 652 472 C644 490 628 498 616 492 C604 486 600 470 597 448 C594 426 594 404 597 382 Z" fill="#1F6B9E"/>
+  
+  <!-- Trachée -->
+  <line x1="512" y1="270" x2="512" y2="340" stroke="#2980B9" stroke-width="18" stroke-linecap="round"/>
+  
+  <!-- Bronche gauche -->
+  <path d="M512 340 C490 352 460 362 440 370" stroke="#2980B9" stroke-width="12" stroke-linecap="round" fill="none"/>
+  
+  <!-- Bronche droite -->
+  <path d="M512 340 C534 352 564 362 584 370" stroke="#2980B9" stroke-width="12" stroke-linecap="round" fill="none"/>
+  
+  <!-- Bronchioles gauche -->
+  <path d="M440 370 C426 390 410 408 405 430" stroke="#2980B9" stroke-width="7" stroke-linecap="round" fill="none"/>
+  <path d="M440 370 C436 392 432 412 430 434" stroke="#2980B9" stroke-width="6" stroke-linecap="round" fill="none" opacity="0.8"/>
+  
+  <!-- Bronchioles droite -->
+  <path d="M584 370 C598 390 614 408 619 430" stroke="#2980B9" stroke-width="7" stroke-linecap="round" fill="none"/>
+  <path d="M584 370 C588 392 592 412 594 434" stroke="#2980B9" stroke-width="6" stroke-linecap="round" fill="none" opacity="0.8"/>
+  
+  <!-- Points IA -->
+  <circle cx="402" cy="432" r="10" fill="#5BA8D4"/>
+  <circle cx="622" cy="432" r="10" fill="#5BA8D4"/>
+  <circle cx="512" cy="410" r="8" fill="#7EC8E3"/>
+  
+  <!-- Lignes scanning -->
+  <line x1="252" y1="420" x2="772" y2="420" stroke="#1F6B9E" stroke-width="2" opacity="0.4"/>
+  <line x1="252" y1="460" x2="772" y2="460" stroke="#1F6B9E" stroke-width="2" opacity="0.3"/>
+  
+  <!-- Texte ARIA -->
+  <text x="512" y="780" text-anchor="middle" font-family="Arial, sans-serif" font-size="150" font-weight="900" letter-spacing="30" fill="#1F6B9E">ARIA</text>
+  
+  <!-- Ligne décorative -->
+  <line x1="200" y1="800" x2="824" y2="800" stroke="#1F6B9E" stroke-width="3" opacity="0.5"/>
+  <circle cx="200" cy="800" r="6" fill="#1F6B9E"/>
+  <circle cx="824" cy="800" r="6" fill="#1F6B9E"/>
+  
+  <!-- Sous-titre -->
+  <text x="512" y="840" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" fill="#5BA8D4" letter-spacing="5">AUTOMATED RADIOGRAPHY IA</text>
+</svg>

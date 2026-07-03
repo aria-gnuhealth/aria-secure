@@ -1,0 +1,56 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <clipPath id="lungClip">
+      <circle cx="256" cy="220" r="160"/>
+    </clipPath>
+  </defs>
+
+  <!-- Fond cercle -->
+  <circle cx="256" cy="220" r="160" fill="#0A2A3F"/>
+  <circle cx="256" cy="220" r="160" fill="none" stroke="#1F6B9E" stroke-width="4"/>
+  <circle cx="256" cy="220" r="146" fill="none" stroke="#1F6B9E" stroke-width="0.8" opacity="0.4"/>
+
+  <!-- Poumon gauche -->
+  <path d="M216 178 C196 172 178 185 175 210 C172 235 175 272 184 292 C191 305 204 312 213 306 C221 300 225 287 227 268 C229 249 229 230 227 212 Z"
+        fill="#1F6B9E" opacity="0.9" clip-path="url(#lungClip)"/>
+
+  <!-- Poumon droit -->
+  <path d="M296 178 C316 172 334 185 337 210 C340 235 337 272 328 292 C321 305 308 312 299 306 C291 300 287 287 285 268 C283 249 283 230 285 212 Z"
+        fill="#1F6B9E" opacity="0.9" clip-path="url(#lungClip)"/>
+
+  <!-- Trachée -->
+  <path d="M256 148 L256 190" stroke="#2980B9" stroke-width="9" stroke-linecap="round" fill="none"/>
+  <!-- Bronches -->
+  <path d="M256 190 C242 198 224 206 214 212" stroke="#2980B9" stroke-width="6" stroke-linecap="round" fill="none"/>
+  <path d="M256 190 C270 198 288 206 298 212" stroke="#2980B9" stroke-width="6" stroke-linecap="round" fill="none"/>
+
+  <!-- Bronchioles gauche -->
+  <path d="M214 212 C206 224 196 234 192 248" stroke="#2980B9" stroke-width="3.5" stroke-linecap="round" fill="none" opacity="0.8"/>
+  <path d="M214 212 C211 226 209 240 208 254" stroke="#2980B9" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.7"/>
+
+  <!-- Bronchioles droite -->
+  <path d="M298 212 C306 224 316 234 320 248" stroke="#2980B9" stroke-width="3.5" stroke-linecap="round" fill="none" opacity="0.8"/>
+  <path d="M298 212 C301 226 303 240 304 254" stroke="#2980B9" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.7"/>
+
+  <!-- Points IA -->
+  <circle cx="200" cy="244" r="5" fill="#5BA8D4" opacity="0.9"/>
+  <circle cx="192" cy="266" r="3.5" fill="#5BA8D4" opacity="0.7"/>
+  <circle cx="312" cy="244" r="5" fill="#5BA8D4" opacity="0.9"/>
+  <circle cx="320" cy="266" r="3.5" fill="#5BA8D4" opacity="0.7"/>
+  <circle cx="256" cy="236" r="4" fill="#7EC8E3" opacity="0.8"/>
+
+  <!-- Lignes scanning -->
+  <line x1="96" y1="220" x2="416" y2="220" stroke="#1F6B9E" stroke-width="1.2" opacity="0.3"/>
+  <line x1="96" y1="248" x2="416" y2="248" stroke="#1F6B9E" stroke-width="1.2" opacity="0.2"/>
+
+  <!-- Texte ARIA -->
+  <text x="256" y="432" text-anchor="middle" font-family="Arial, sans-serif" font-size="78" font-weight="800" letter-spacing="18" fill="#1F6B9E">ARIA</text>
+
+  <!-- Ligne -->
+  <line x1="120" y1="446" x2="392" y2="446" stroke="#1F6B9E" stroke-width="1.5" opacity="0.4"/>
+  <circle cx="120" cy="446" r="4" fill="#1F6B9E"/>
+  <circle cx="392" cy="446" r="4" fill="#1F6B9E"/>
+
+  <!-- Sous-titre -->
+  <text x="256" y="470" text-anchor="middle" font-family="Arial, sans-serif" font-size="15" font-weight="400" letter-spacing="3" fill="#5BA8D4">AUTOMATED RADIOGRAPHY INTELLIGENT ANALYSIS</text>
+</svg>
