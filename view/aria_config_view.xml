@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<data>
+    <record model="ir.ui.view" id="aria_config_view_form">
+        <field name="model">aria.config</field>
+        <field name="type">form</field>
+        <field name="name">aria_config_form</field>
+    </record>
+
+    <record model="ir.action.act_window" id="act_aria_config_form">
+        <field name="name">Configuration ARIA</field>
+        <field name="res_model">aria.config</field>
+    </record>
+    <record model="ir.action.act_window.view" id="act_aria_config_form_view_form">
+        <field name="sequence" eval="10"/>
+        <field name="view" ref="aria_config_view_form"/>
+        <field name="act_window" ref="act_aria_config_form"/>
+    </record>
+
+    <menuitem name="Configuration ARIA" sequence="20"
+        id="menu_aria_config"
+        icon="tryton-settings"
+        action="act_aria_config_form"/>
+</data>

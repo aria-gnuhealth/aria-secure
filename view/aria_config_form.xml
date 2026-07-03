@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<form>
+    <label name="aria_core_url"/>
+    <field name="aria_core_url" colspan="3"/>
+    <label name="email"/>
+    <field name="email" colspan="3"/>
+    <label name="password"/>
+    <field name="password" widget="password" colspan="3"/>
+    <label name="timeout"/>
+    <field name="timeout"/>
+    <label name="actif"/>
+    <field name="actif"/>
+</form>

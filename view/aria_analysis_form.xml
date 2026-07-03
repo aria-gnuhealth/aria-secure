@@ -1,0 +1,49 @@
+<?xml version="1.0"?>
+<form>
+    <group colspan="4" col="4" id="aria_main_group">
+        <label name="patient"/>
+        <field name="patient"/>
+        <label name="healthprof"/>
+        <field name="healthprof"/>
+        <label name="type_analyse"/>
+        <field name="type_analyse"/>
+        <label name="state"/>
+        <field name="state"/>
+        <label name="image_nom"/>
+        <field name="image_nom"/>
+        <field name="image_data" colspan="4"/>
+    </group>
+    <newline/>
+    <group colspan="4" col="1" id="aria_button_group">
+        <button string="Analyser"
+                name="lancer_analyse"
+                icon="tryton-ok"
+                confirm="Envoyer cette radiographie à ARIA-Core ?"/>
+        <button string="Générer le rapport PDF"
+                name="generer_rapport"
+                icon="tryton-print"/>
+    </group>
+    <newline/>
+    <group colspan="4" col="4" id="aria_resultats_group" string="Résultats">
+        <label name="score_confiance"/>
+        <field name="score_confiance"/>
+        <label name="examen_normal"/>
+        <field name="examen_normal"/>
+        <label name="niveau_urgence"/>
+        <field name="niveau_urgence"/>
+        <label name="heatmap_url"/>
+        <field name="heatmap_url"/>
+        <label name="pathologies_detectees"/>
+        <field name="pathologies_detectees" colspan="4" height="100"/>
+        <label name="notes_clinicien"/>
+        <field name="notes_clinicien" colspan="4" height="80"/>
+        <field name="resultats_json" colspan="4" height="150"/>
+    </group>
+    <newline/>
+    <group colspan="4" col="2" id="aria_rapport_group" string="Rapport PDF">
+        <label name="rapport_nom"/>
+        <field name="rapport_nom"/>
+        <label name="rapport_pdf"/>
+        <field name="rapport_pdf" filename="rapport_nom"/>
+    </group>
+</form>

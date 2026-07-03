@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<form>
+    <label name="patient"/>
+    <field name="patient" colspan="3"/>
+    <label name="healthprof"/>
+    <field name="healthprof" colspan="3"/>
+    <label name="type_analyse"/>
+    <field name="type_analyse" colspan="3"/>
+    <label name="image_nom"/>
+    <field name="image_nom" colspan="3"/>
+    <field name="image_data" colspan="4"/>
+</form>
