@@ -1,0 +1,675 @@
+🔨 Checking/Creating database tables...
+2026-06-25 20:41:05,508 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-25 20:41:05,508 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("users")
+2026-06-25 20:41:05,508 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:05,509 INFO sqlalchemy.engine.Engine PRAGMA temp.table_info("users")
+2026-06-25 20:41:05,509 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:05,509 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("patients")
+2026-06-25 20:41:05,509 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:05,509 INFO sqlalchemy.engine.Engine PRAGMA temp.table_info("patients")
+2026-06-25 20:41:05,509 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:05,509 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("images")
+2026-06-25 20:41:05,509 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:05,509 INFO sqlalchemy.engine.Engine PRAGMA temp.table_info("images")
+2026-06-25 20:41:05,509 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:05,509 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("ai_models")
+2026-06-25 20:41:05,509 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:05,510 INFO sqlalchemy.engine.Engine PRAGMA temp.table_info("ai_models")
+2026-06-25 20:41:05,510 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:05,510 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("analyses")
+2026-06-25 20:41:05,510 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:05,510 INFO sqlalchemy.engine.Engine PRAGMA temp.table_info("analyses")
+2026-06-25 20:41:05,510 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:05,510 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("findings")
+2026-06-25 20:41:05,510 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:05,510 INFO sqlalchemy.engine.Engine PRAGMA temp.table_info("findings")
+2026-06-25 20:41:05,510 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:05,510 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("reports")
+2026-06-25 20:41:05,510 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:05,510 INFO sqlalchemy.engine.Engine PRAGMA temp.table_info("reports")
+2026-06-25 20:41:05,510 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:05,510 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("audit_logs")
+2026-06-25 20:41:05,510 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:05,510 INFO sqlalchemy.engine.Engine PRAGMA temp.table_info("audit_logs")
+2026-06-25 20:41:05,511 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:05,511 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("discussions")
+2026-06-25 20:41:05,511 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:05,511 INFO sqlalchemy.engine.Engine PRAGMA temp.table_info("discussions")
+2026-06-25 20:41:05,511 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:05,511 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("messages")
+2026-06-25 20:41:05,511 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:05,511 INFO sqlalchemy.engine.Engine PRAGMA temp.table_info("messages")
+2026-06-25 20:41:05,511 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:05,511 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("notifications")
+2026-06-25 20:41:05,511 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:05,511 INFO sqlalchemy.engine.Engine PRAGMA temp.table_info("notifications")
+2026-06-25 20:41:05,511 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:05,511 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("subscriptions")
+2026-06-25 20:41:05,511 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:05,511 INFO sqlalchemy.engine.Engine PRAGMA temp.table_info("subscriptions")
+2026-06-25 20:41:05,511 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:05,512 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("ad_views")
+2026-06-25 20:41:05,512 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:05,512 INFO sqlalchemy.engine.Engine PRAGMA temp.table_info("ad_views")
+2026-06-25 20:41:05,512 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:05,512 INFO sqlalchemy.engine.Engine 
+CREATE TABLE users (
+	id UUID NOT NULL, 
+	email VARCHAR(255) NOT NULL, 
+	password_hash VARCHAR(255) NOT NULL, 
+	first_name VARCHAR(100) NOT NULL, 
+	last_name VARCHAR(100) NOT NULL, 
+	role VARCHAR(50) NOT NULL, 
+	is_active BOOLEAN, 
+	is_email_verified BOOLEAN, 
+	email_verification_token VARCHAR(255), 
+	email_verified_at DATETIME, 
+	created_at DATETIME DEFAULT CURRENT_TIMESTAMP, 
+	last_login DATETIME, 
+	PRIMARY KEY (id), 
+	UNIQUE (email_verification_token)
+)
+
+
+2026-06-25 20:41:05,513 INFO sqlalchemy.engine.Engine [no key 0.00007s] ()
+2026-06-25 20:41:05,516 INFO sqlalchemy.engine.Engine CREATE UNIQUE INDEX ix_users_email ON users (email)
+2026-06-25 20:41:05,516 INFO sqlalchemy.engine.Engine [no key 0.00008s] ()
+2026-06-25 20:41:05,518 INFO sqlalchemy.engine.Engine 
+CREATE TABLE patients (
+	id UUID NOT NULL, 
+	medical_record_number VARCHAR(50) NOT NULL, 
+	first_name VARCHAR(100) NOT NULL, 
+	last_name VARCHAR(100) NOT NULL, 
+	date_of_birth DATETIME, 
+	gender VARCHAR(1), 
+	phone VARCHAR(50), 
+	address TEXT, 
+	created_at DATETIME DEFAULT CURRENT_TIMESTAMP, 
+	PRIMARY KEY (id)
+)
+
+
+2026-06-25 20:41:05,519 INFO sqlalchemy.engine.Engine [no key 0.00008s] ()
+2026-06-25 20:41:05,521 INFO sqlalchemy.engine.Engine CREATE UNIQUE INDEX ix_patients_medical_record_number ON patients (medical_record_number)
+2026-06-25 20:41:05,521 INFO sqlalchemy.engine.Engine [no key 0.00007s] ()
+2026-06-25 20:41:05,524 INFO sqlalchemy.engine.Engine 
+CREATE TABLE ai_models (
+	id UUID NOT NULL, 
+	name VARCHAR(100) NOT NULL, 
+	version VARCHAR(50) NOT NULL, 
+	architecture VARCHAR(100), 
+	onnx_path VARCHAR(500) NOT NULL, 
+	is_active BOOLEAN, 
+	input_shape VARCHAR(50), 
+	output_classes JSON, 
+	accuracy FLOAT, 
+	created_at DATETIME DEFAULT CURRENT_TIMESTAMP, 
+	deployed_at DATETIME, 
+	PRIMARY KEY (id)
+)
+
+
+2026-06-25 20:41:05,524 INFO sqlalchemy.engine.Engine [no key 0.00008s] ()
+2026-06-25 20:41:05,527 INFO sqlalchemy.engine.Engine 
+CREATE TABLE images (
+	id UUID NOT NULL, 
+	patient_id UUID NOT NULL, 
+	format VARCHAR(20) NOT NULL, 
+	raw_data_path VARCHAR(500) NOT NULL, 
+	anonymized_path VARCHAR(500), 
+	acquisition_date DATETIME, 
+	body_part VARCHAR(50), 
+	metadata_json JSON, 
+	deleted_at DATETIME, 
+	PRIMARY KEY (id), 
+	FOREIGN KEY(patient_id) REFERENCES patients (id)
+)
+
+
+2026-06-25 20:41:05,527 INFO sqlalchemy.engine.Engine [no key 0.00014s] ()
+2026-06-25 20:41:05,529 INFO sqlalchemy.engine.Engine CREATE INDEX ix_images_patient_id ON images (patient_id)
+2026-06-25 20:41:05,529 INFO sqlalchemy.engine.Engine [no key 0.00010s] ()
+2026-06-25 20:41:05,533 INFO sqlalchemy.engine.Engine 
+CREATE TABLE audit_logs (
+	id INTEGER NOT NULL, 
+	user_id UUID, 
+	action VARCHAR(100) NOT NULL, 
+	resource_type VARCHAR(50), 
+	resource_id VARCHAR(100), 
+	ip_address VARCHAR(45), 
+	user_agent VARCHAR(500), 
+	details TEXT, 
+	created_at DATETIME DEFAULT CURRENT_TIMESTAMP, 
+	PRIMARY KEY (id), 
+	FOREIGN KEY(user_id) REFERENCES users (id)
+)
+
+
+2026-06-25 20:41:05,533 INFO sqlalchemy.engine.Engine [no key 0.00009s] ()
+2026-06-25 20:41:05,535 INFO sqlalchemy.engine.Engine CREATE INDEX ix_audit_logs_user_id ON audit_logs (user_id)
+2026-06-25 20:41:05,535 INFO sqlalchemy.engine.Engine [no key 0.00006s] ()
+2026-06-25 20:41:05,538 INFO sqlalchemy.engine.Engine 
+CREATE TABLE notifications (
+	id UUID NOT NULL, 
+	user_id UUID NOT NULL, 
+	type VARCHAR(50) NOT NULL, 
+	title VARCHAR(255) NOT NULL, 
+	message TEXT, 
+	link VARCHAR(500), 
+	is_read BOOLEAN, 
+	read_at DATETIME, 
+	created_at DATETIME DEFAULT CURRENT_TIMESTAMP, 
+	PRIMARY KEY (id), 
+	FOREIGN KEY(user_id) REFERENCES users (id)
+)
+
+
+2026-06-25 20:41:05,538 INFO sqlalchemy.engine.Engine [no key 0.00018s] ()
+2026-06-25 20:41:05,541 INFO sqlalchemy.engine.Engine CREATE INDEX ix_notifications_user_id ON notifications (user_id)
+2026-06-25 20:41:05,541 INFO sqlalchemy.engine.Engine [no key 0.00010s] ()
+2026-06-25 20:41:05,545 INFO sqlalchemy.engine.Engine 
+CREATE TABLE subscriptions (
+	id UUID NOT NULL, 
+	user_id UUID NOT NULL, 
+	status VARCHAR(20) NOT NULL, 
+	"plan" VARCHAR(20) NOT NULL, 
+	start_date DATETIME, 
+	end_date DATETIME, 
+	cinetpay_transaction_id VARCHAR(255), 
+	amount INTEGER, 
+	currency VARCHAR(10), 
+	created_at DATETIME DEFAULT CURRENT_TIMESTAMP, 
+	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, 
+	PRIMARY KEY (id), 
+	FOREIGN KEY(user_id) REFERENCES users (id)
+)
+
+
+2026-06-25 20:41:05,545 INFO sqlalchemy.engine.Engine [no key 0.00008s] ()
+2026-06-25 20:41:05,547 INFO sqlalchemy.engine.Engine CREATE INDEX ix_subscriptions_user_id ON subscriptions (user_id)
+2026-06-25 20:41:05,547 INFO sqlalchemy.engine.Engine [no key 0.00010s] ()
+2026-06-25 20:41:05,550 INFO sqlalchemy.engine.Engine 
+CREATE TABLE ad_views (
+	id UUID NOT NULL, 
+	user_id UUID NOT NULL, 
+	viewed_at DATETIME DEFAULT CURRENT_TIMESTAMP, 
+	analysis_unlocked BOOLEAN, 
+	PRIMARY KEY (id), 
+	FOREIGN KEY(user_id) REFERENCES users (id)
+)
+
+
+2026-06-25 20:41:05,550 INFO sqlalchemy.engine.Engine [no key 0.00007s] ()
+2026-06-25 20:41:05,553 INFO sqlalchemy.engine.Engine CREATE INDEX ix_ad_views_user_id ON ad_views (user_id)
+2026-06-25 20:41:05,553 INFO sqlalchemy.engine.Engine [no key 0.00018s] ()
+2026-06-25 20:41:05,556 INFO sqlalchemy.engine.Engine 
+CREATE TABLE analyses (
+	id UUID NOT NULL, 
+	patient_id UUID NOT NULL, 
+	image_id UUID NOT NULL, 
+	user_id UUID, 
+	ai_model_id UUID, 
+	status VARCHAR(50), 
+	confidence_score FLOAT, 
+	urgency_level VARCHAR(50), 
+	heatmap_path VARCHAR(500), 
+	results_json TEXT, 
+	created_at DATETIME DEFAULT CURRENT_TIMESTAMP, 
+	completed_at DATETIME, 
+	error_message TEXT, 
+	validated_by UUID, 
+	validated_at DATETIME, 
+	clinical_feedback TEXT, 
+	PRIMARY KEY (id), 
+	FOREIGN KEY(patient_id) REFERENCES patients (id), 
+	FOREIGN KEY(image_id) REFERENCES images (id), 
+	FOREIGN KEY(user_id) REFERENCES users (id), 
+	FOREIGN KEY(ai_model_id) REFERENCES ai_models (id), 
+	FOREIGN KEY(validated_by) REFERENCES users (id)
+)
+
+
+2026-06-25 20:41:05,556 INFO sqlalchemy.engine.Engine [no key 0.00008s] ()
+2026-06-25 20:41:05,559 INFO sqlalchemy.engine.Engine CREATE INDEX ix_analyses_user_id ON analyses (user_id)
+2026-06-25 20:41:05,559 INFO sqlalchemy.engine.Engine [no key 0.00007s] ()
+2026-06-25 20:41:05,561 INFO sqlalchemy.engine.Engine CREATE INDEX ix_analyses_image_id ON analyses (image_id)
+2026-06-25 20:41:05,561 INFO sqlalchemy.engine.Engine [no key 0.00010s] ()
+2026-06-25 20:41:05,564 INFO sqlalchemy.engine.Engine CREATE INDEX ix_analyses_patient_id ON analyses (patient_id)
+2026-06-25 20:41:05,564 INFO sqlalchemy.engine.Engine [no key 0.00010s] ()
+2026-06-25 20:41:05,567 INFO sqlalchemy.engine.Engine 
+CREATE TABLE findings (
+	id INTEGER NOT NULL, 
+	analysis_id UUID NOT NULL, 
+	pathology VARCHAR(100) NOT NULL, 
+	probability FLOAT NOT NULL, 
+	severity VARCHAR(50), 
+	bbox_x1 FLOAT, 
+	bbox_y1 FLOAT, 
+	bbox_x2 FLOAT, 
+	bbox_y2 FLOAT, 
+	PRIMARY KEY (id), 
+	FOREIGN KEY(analysis_id) REFERENCES analyses (id)
+)
+
+
+2026-06-25 20:41:05,567 INFO sqlalchemy.engine.Engine [no key 0.00010s] ()
+2026-06-25 20:41:05,571 INFO sqlalchemy.engine.Engine CREATE INDEX ix_findings_analysis_id ON findings (analysis_id)
+2026-06-25 20:41:05,571 INFO sqlalchemy.engine.Engine [no key 0.00009s] ()
+2026-06-25 20:41:05,574 INFO sqlalchemy.engine.Engine 
+CREATE TABLE reports (
+	id UUID NOT NULL, 
+	analysis_id UUID NOT NULL, 
+	pdf_path VARCHAR(500), 
+	fhir_json JSON, 
+	generated_at DATETIME DEFAULT CURRENT_TIMESTAMP, 
+	generated_by UUID, 
+	PRIMARY KEY (id), 
+	FOREIGN KEY(analysis_id) REFERENCES analyses (id), 
+	FOREIGN KEY(generated_by) REFERENCES users (id)
+)
+
+
+2026-06-25 20:41:05,574 INFO sqlalchemy.engine.Engine [no key 0.00008s] ()
+2026-06-25 20:41:05,578 INFO sqlalchemy.engine.Engine CREATE UNIQUE INDEX ix_reports_analysis_id ON reports (analysis_id)
+2026-06-25 20:41:05,578 INFO sqlalchemy.engine.Engine [no key 0.00010s] ()
+2026-06-25 20:41:05,580 INFO sqlalchemy.engine.Engine 
+CREATE TABLE discussions (
+	id UUID NOT NULL, 
+	analysis_id UUID NOT NULL, 
+	doctor_id UUID NOT NULL, 
+	radiologist_id UUID NOT NULL, 
+	status VARCHAR(50), 
+	reviewed_by UUID, 
+	reviewed_at DATETIME, 
+	review_comment TEXT, 
+	created_at DATETIME DEFAULT CURRENT_TIMESTAMP, 
+	updated_at DATETIME, 
+	PRIMARY KEY (id), 
+	FOREIGN KEY(analysis_id) REFERENCES analyses (id), 
+	FOREIGN KEY(doctor_id) REFERENCES users (id), 
+	FOREIGN KEY(radiologist_id) REFERENCES users (id), 
+	FOREIGN KEY(reviewed_by) REFERENCES users (id)
+)
+
+
+2026-06-25 20:41:05,581 INFO sqlalchemy.engine.Engine [no key 0.00008s] ()
+2026-06-25 20:41:05,583 INFO sqlalchemy.engine.Engine CREATE INDEX ix_discussions_doctor_id ON discussions (doctor_id)
+2026-06-25 20:41:05,583 INFO sqlalchemy.engine.Engine [no key 0.00007s] ()
+2026-06-25 20:41:05,585 INFO sqlalchemy.engine.Engine CREATE INDEX ix_discussions_analysis_id ON discussions (analysis_id)
+2026-06-25 20:41:05,585 INFO sqlalchemy.engine.Engine [no key 0.00009s] ()
+2026-06-25 20:41:05,588 INFO sqlalchemy.engine.Engine CREATE INDEX ix_discussions_radiologist_id ON discussions (radiologist_id)
+2026-06-25 20:41:05,588 INFO sqlalchemy.engine.Engine [no key 0.00007s] ()
+2026-06-25 20:41:05,590 INFO sqlalchemy.engine.Engine 
+CREATE TABLE messages (
+	id UUID NOT NULL, 
+	discussion_id UUID NOT NULL, 
+	sender_id UUID NOT NULL, 
+	content TEXT NOT NULL, 
+	attachment_url VARCHAR(500), 
+	attachment_type VARCHAR(50), 
+	attachment_name VARCHAR(255), 
+	read_at DATETIME, 
+	created_at DATETIME DEFAULT CURRENT_TIMESTAMP, 
+	PRIMARY KEY (id), 
+	FOREIGN KEY(discussion_id) REFERENCES discussions (id), 
+	FOREIGN KEY(sender_id) REFERENCES users (id)
+)
+
+
+2026-06-25 20:41:05,590 INFO sqlalchemy.engine.Engine [no key 0.00007s] ()
+2026-06-25 20:41:05,593 INFO sqlalchemy.engine.Engine CREATE INDEX ix_messages_discussion_id ON messages (discussion_id)
+2026-06-25 20:41:05,593 INFO sqlalchemy.engine.Engine [no key 0.00019s] ()
+2026-06-25 20:41:05,597 INFO sqlalchemy.engine.Engine CREATE INDEX ix_messages_sender_id ON messages (sender_id)
+2026-06-25 20:41:05,597 INFO sqlalchemy.engine.Engine [no key 0.00012s] ()
+2026-06-25 20:41:05,599 INFO sqlalchemy.engine.Engine COMMIT
+/opt/aria/aria-core/app/api/v1/audit.py:232: FastAPIDeprecationWarning: `regex` has been deprecated, please use `pattern` instead
+  format: str = Query("json", regex="^(json|csv)$"),
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started parent process [69819]
+✅ Database tables ready
+✅ Bucket 'aria-dicom' existe déjà
+🔨 Checking/Creating database tables...
+2026-06-25 20:41:07,676 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-25 20:41:07,677 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("users")
+2026-06-25 20:41:07,677 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,680 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("patients")
+2026-06-25 20:41:07,680 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,680 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("images")
+2026-06-25 20:41:07,680 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,680 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("ai_models")
+2026-06-25 20:41:07,680 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,680 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("analyses")
+2026-06-25 20:41:07,680 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,680 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("findings")
+2026-06-25 20:41:07,680 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,680 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("reports")
+2026-06-25 20:41:07,681 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,681 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("audit_logs")
+2026-06-25 20:41:07,681 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,681 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("discussions")
+2026-06-25 20:41:07,681 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,681 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("messages")
+2026-06-25 20:41:07,681 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,681 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("notifications")
+2026-06-25 20:41:07,681 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,683 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("subscriptions")
+2026-06-25 20:41:07,683 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,683 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("ad_views")
+2026-06-25 20:41:07,683 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,684 INFO sqlalchemy.engine.Engine COMMIT
+🔨 Checking/Creating database tables...
+2026-06-25 20:41:07,704 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-25 20:41:07,709 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("users")
+2026-06-25 20:41:07,709 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,710 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("patients")
+2026-06-25 20:41:07,710 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,710 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("images")
+2026-06-25 20:41:07,710 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,710 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("ai_models")
+2026-06-25 20:41:07,710 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,711 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("analyses")
+2026-06-25 20:41:07,711 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,711 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("findings")
+2026-06-25 20:41:07,711 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,711 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("reports")
+2026-06-25 20:41:07,711 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,711 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("audit_logs")
+2026-06-25 20:41:07,711 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,714 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("discussions")
+2026-06-25 20:41:07,714 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,714 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("messages")
+2026-06-25 20:41:07,714 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,715 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("notifications")
+2026-06-25 20:41:07,715 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,715 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("subscriptions")
+2026-06-25 20:41:07,715 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,715 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("ad_views")
+2026-06-25 20:41:07,715 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,715 INFO sqlalchemy.engine.Engine COMMIT
+🔨 Checking/Creating database tables...
+2026-06-25 20:41:07,720 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-25 20:41:07,721 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("users")
+2026-06-25 20:41:07,721 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,721 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("patients")
+2026-06-25 20:41:07,721 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,722 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("images")
+2026-06-25 20:41:07,722 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,722 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("ai_models")
+2026-06-25 20:41:07,722 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,722 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("analyses")
+2026-06-25 20:41:07,722 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,724 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("findings")
+2026-06-25 20:41:07,724 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,724 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("reports")
+2026-06-25 20:41:07,725 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,725 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("audit_logs")
+2026-06-25 20:41:07,725 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,725 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("discussions")
+2026-06-25 20:41:07,725 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,725 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("messages")
+2026-06-25 20:41:07,725 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,725 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("notifications")
+2026-06-25 20:41:07,725 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,727 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("subscriptions")
+2026-06-25 20:41:07,727 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,727 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("ad_views")
+2026-06-25 20:41:07,727 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,728 INFO sqlalchemy.engine.Engine COMMIT
+🔨 Checking/Creating database tables...
+2026-06-25 20:41:07,782 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-25 20:41:07,782 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("users")
+2026-06-25 20:41:07,782 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,783 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("patients")
+2026-06-25 20:41:07,783 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,787 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("images")
+2026-06-25 20:41:07,788 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,788 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("ai_models")
+2026-06-25 20:41:07,788 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,788 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("analyses")
+2026-06-25 20:41:07,788 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,788 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("findings")
+2026-06-25 20:41:07,788 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,788 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("reports")
+2026-06-25 20:41:07,788 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,788 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("audit_logs")
+2026-06-25 20:41:07,788 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,788 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("discussions")
+2026-06-25 20:41:07,789 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,789 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("messages")
+2026-06-25 20:41:07,789 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,789 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("notifications")
+2026-06-25 20:41:07,789 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,789 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("subscriptions")
+2026-06-25 20:41:07,789 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,793 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("ad_views")
+2026-06-25 20:41:07,793 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:41:07,794 INFO sqlalchemy.engine.Engine COMMIT
+/opt/aria/aria-core/app/api/v1/audit.py:232: FastAPIDeprecationWarning: `regex` has been deprecated, please use `pattern` instead
+  format: str = Query("json", regex="^(json|csv)$"),
+/opt/aria/aria-core/app/api/v1/audit.py:232: FastAPIDeprecationWarning: `regex` has been deprecated, please use `pattern` instead
+  format: str = Query("json", regex="^(json|csv)$"),
+INFO:     Started server process [69826]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Started server process [69825]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+/opt/aria/aria-core/app/api/v1/audit.py:232: FastAPIDeprecationWarning: `regex` has been deprecated, please use `pattern` instead
+  format: str = Query("json", regex="^(json|csv)$"),
+/opt/aria/aria-core/app/api/v1/audit.py:232: FastAPIDeprecationWarning: `regex` has been deprecated, please use `pattern` instead
+  format: str = Query("json", regex="^(json|csv)$"),
+INFO:     Started server process [69824]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Started server process [69823]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+✅ Database tables ready
+✅ Bucket 'aria-dicom' existe déjà
+INFO:     102.244.98.231:12169 - "GET /docs HTTP/1.1" 200 OK
+/opt/aria/aria-core/aria-core/venv/lib/python3.14/site-packages/fastapi/openapi/utils.py:252: UserWarning: Duplicate Operation ID get_users_by_role_api_v1_auth_users_get for function get_users_by_role at /opt/aria/aria-core/app/api/v1/auth.py
+  warnings.warn(message, stacklevel=1)
+/opt/aria/aria-core/aria-core/venv/lib/python3.14/site-packages/fastapi/openapi/utils.py:252: UserWarning: Duplicate Operation ID get_user_by_id_api_v1_auth_users__user_id__get for function get_user_by_id at /opt/aria/aria-core/app/api/v1/auth.py
+  warnings.warn(message, stacklevel=1)
+/opt/aria/aria-core/aria-core/venv/lib/python3.14/site-packages/fastapi/openapi/utils.py:252: UserWarning: Duplicate Operation ID get_patient_trash_api_v1_patients__patient_id__trash_get for function get_patient_trash at /opt/aria/aria-core/app/api/v1/images.py
+  warnings.warn(message, stacklevel=1)
+/opt/aria/aria-core/aria-core/venv/lib/python3.14/site-packages/fastapi/openapi/utils.py:252: UserWarning: Duplicate Operation ID empty_patient_trash_api_v1_patients__patient_id__trash_empty_delete for function empty_patient_trash at /opt/aria/aria-core/app/api/v1/images.py
+  warnings.warn(message, stacklevel=1)
+/opt/aria/aria-core/aria-core/venv/lib/python3.14/site-packages/fastapi/openapi/utils.py:252: UserWarning: Duplicate Operation ID get_pending_analyses_api_v1_radiologist_pending_analyses_get for function get_pending_analyses at /opt/aria/aria-core/app/api/v1/radiologist.py
+  warnings.warn(message, stacklevel=1)
+INFO:     102.244.98.231:12409 - "GET /openapi.json HTTP/1.1" 200 OK
+✅ Database tables ready
+✅ Bucket 'aria-dicom' existe déjà
+2026-06-25 20:42:43,535 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-25 20:42:43,538 INFO sqlalchemy.engine.Engine SELECT users.id AS users_id, users.email AS users_email, users.password_hash AS users_password_hash, users.first_name AS users_first_name, users.last_name AS users_last_name, users.role AS users_role, users.is_active AS users_is_active, users.is_email_verified AS users_is_email_verified, users.email_verification_token AS users_email_verification_token, users.email_verified_at AS users_email_verified_at, users.created_at AS users_created_at, users.last_login AS users_last_login 
+FROM users 
+WHERE users.email = ?
+ LIMIT ? OFFSET ?
+2026-06-25 20:42:43,538 INFO sqlalchemy.engine.Engine [generated in 0.00019s] ('jeryodjeu@gmail.com', 1, 0)
+2026-06-25 20:42:43,539 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:     102.244.98.231:14401 - "POST /api/v1/auth/login HTTP/1.1" 401 Unauthorized
+2026-06-25 20:42:56,028 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-25 20:42:56,028 INFO sqlalchemy.engine.Engine SELECT users.id AS users_id, users.email AS users_email, users.password_hash AS users_password_hash, users.first_name AS users_first_name, users.last_name AS users_last_name, users.role AS users_role, users.is_active AS users_is_active, users.is_email_verified AS users_is_email_verified, users.email_verification_token AS users_email_verification_token, users.email_verified_at AS users_email_verified_at, users.created_at AS users_created_at, users.last_login AS users_last_login 
+FROM users 
+WHERE users.email = ?
+ LIMIT ? OFFSET ?
+2026-06-25 20:42:56,028 INFO sqlalchemy.engine.Engine [cached since 12.49s ago] ('jeryodjeu@gmail.com', 1, 0)
+2026-06-25 20:42:56,029 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:     102.244.98.231:3607 - "POST /api/v1/auth/login HTTP/1.1" 401 Unauthorized
+2026-06-25 20:43:03,383 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-25 20:43:03,383 INFO sqlalchemy.engine.Engine SELECT users.id AS users_id, users.email AS users_email, users.password_hash AS users_password_hash, users.first_name AS users_first_name, users.last_name AS users_last_name, users.role AS users_role, users.is_active AS users_is_active, users.is_email_verified AS users_is_email_verified, users.email_verification_token AS users_email_verification_token, users.email_verified_at AS users_email_verified_at, users.created_at AS users_created_at, users.last_login AS users_last_login 
+FROM users 
+WHERE users.email = ?
+ LIMIT ? OFFSET ?
+2026-06-25 20:43:03,383 INFO sqlalchemy.engine.Engine [cached since 19.85s ago] ('jeryodjeu@gmail.com', 1, 0)
+2026-06-25 20:43:03,383 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:     102.244.98.231:15267 - "POST /api/v1/auth/login HTTP/1.1" 401 Unauthorized
+INFO:     Received SIGHUP, restarting processes.
+INFO:     Waiting for child process [69823]
+/usr/lib/python3.14/multiprocessing/resource_tracker.py:166: UserWarning: resource_tracker: process died unexpectedly, relaunching.  Some resources might leak.
+  warnings.warn('resource_tracker: process died unexpectedly, '
+INFO:     Waiting for child process [69824]
+INFO:     Waiting for child process [69825]
+INFO:     Waiting for child process [69826]
+🔨 Checking/Creating database tables...
+2026-06-25 20:44:40,409 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-25 20:44:40,409 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("users")
+2026-06-25 20:44:40,409 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,410 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("patients")
+2026-06-25 20:44:40,410 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,410 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("images")
+2026-06-25 20:44:40,410 INFO sqlalchemy.engine.Engine [raw sql] ()
+🔨 Checking/Creating database tables...
+2026-06-25 20:44:40,411 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-25 20:44:40,411 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("users")
+2026-06-25 20:44:40,411 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,412 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("ai_models")
+2026-06-25 20:44:40,412 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,413 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("analyses")
+2026-06-25 20:44:40,413 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,413 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("findings")
+2026-06-25 20:44:40,413 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,413 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("reports")
+2026-06-25 20:44:40,413 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,413 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("audit_logs")
+2026-06-25 20:44:40,413 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,413 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("discussions")
+2026-06-25 20:44:40,413 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,413 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("messages")
+2026-06-25 20:44:40,413 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,414 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("notifications")
+2026-06-25 20:44:40,414 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,414 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("subscriptions")
+2026-06-25 20:44:40,414 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,414 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("ad_views")
+2026-06-25 20:44:40,414 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,414 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("patients")
+2026-06-25 20:44:40,414 INFO sqlalchemy.engine.Engine COMMIT
+2026-06-25 20:44:40,414 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,414 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("images")
+2026-06-25 20:44:40,414 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,414 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("ai_models")
+2026-06-25 20:44:40,414 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,415 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("analyses")
+2026-06-25 20:44:40,415 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,415 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("findings")
+2026-06-25 20:44:40,415 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,415 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("reports")
+2026-06-25 20:44:40,415 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,415 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("audit_logs")
+2026-06-25 20:44:40,417 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,417 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("discussions")
+2026-06-25 20:44:40,417 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,418 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("messages")
+2026-06-25 20:44:40,418 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,418 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("notifications")
+2026-06-25 20:44:40,418 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,418 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("subscriptions")
+2026-06-25 20:44:40,418 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,418 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("ad_views")
+2026-06-25 20:44:40,418 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,418 INFO sqlalchemy.engine.Engine COMMIT
+🔨 Checking/Creating database tables...
+2026-06-25 20:44:40,425 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-25 20:44:40,425 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("users")
+2026-06-25 20:44:40,425 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,428 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("patients")
+2026-06-25 20:44:40,428 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,428 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("images")
+2026-06-25 20:44:40,428 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,428 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("ai_models")
+2026-06-25 20:44:40,428 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,428 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("analyses")
+2026-06-25 20:44:40,428 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,428 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("findings")
+2026-06-25 20:44:40,428 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,428 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("reports")
+2026-06-25 20:44:40,428 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,429 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("audit_logs")
+2026-06-25 20:44:40,429 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,429 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("discussions")
+2026-06-25 20:44:40,429 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,429 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("messages")
+2026-06-25 20:44:40,429 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,429 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("notifications")
+2026-06-25 20:44:40,429 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,429 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("subscriptions")
+2026-06-25 20:44:40,432 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,432 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("ad_views")
+2026-06-25 20:44:40,432 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,433 INFO sqlalchemy.engine.Engine COMMIT
+🔨 Checking/Creating database tables...
+2026-06-25 20:44:40,468 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-25 20:44:40,468 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("users")
+2026-06-25 20:44:40,469 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,469 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("patients")
+2026-06-25 20:44:40,473 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,473 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("images")
+2026-06-25 20:44:40,473 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,474 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("ai_models")
+2026-06-25 20:44:40,474 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,474 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("analyses")
+2026-06-25 20:44:40,474 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,474 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("findings")
+2026-06-25 20:44:40,474 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,474 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("reports")
+2026-06-25 20:44:40,474 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,474 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("audit_logs")
+2026-06-25 20:44:40,474 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,474 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("discussions")
+2026-06-25 20:44:40,474 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,474 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("messages")
+2026-06-25 20:44:40,474 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,475 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("notifications")
+2026-06-25 20:44:40,475 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,475 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("subscriptions")
+2026-06-25 20:44:40,475 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,475 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("ad_views")
+2026-06-25 20:44:40,475 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-25 20:44:40,475 INFO sqlalchemy.engine.Engine COMMIT
+/opt/aria/aria-core/app/api/v1/audit.py:232: FastAPIDeprecationWarning: `regex` has been deprecated, please use `pattern` instead
+  format: str = Query("json", regex="^(json|csv)$"),
+/opt/aria/aria-core/app/api/v1/audit.py:232: FastAPIDeprecationWarning: `regex` has been deprecated, please use `pattern` instead
+  format: str = Query("json", regex="^(json|csv)$"),
+/opt/aria/aria-core/app/api/v1/audit.py:232: FastAPIDeprecationWarning: `regex` has been deprecated, please use `pattern` instead
+  format: str = Query("json", regex="^(json|csv)$"),
+/opt/aria/aria-core/app/api/v1/audit.py:232: FastAPIDeprecationWarning: `regex` has been deprecated, please use `pattern` instead
+  format: str = Query("json", regex="^(json|csv)$"),
+INFO:     Started server process [70154]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Started server process [70157]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Started server process [70155]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Started server process [70156]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Received SIGTERM, exiting.
+INFO:     Terminated child process [70154]
+INFO:     Terminated child process [70155]
+INFO:     Terminated child process [70156]
+INFO:     Terminated child process [70157]
+INFO:     Waiting for child process [70154]
+INFO:     Shutting down
+INFO:     Shutting down
+INFO:     Shutting down
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [70157]
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [70154]
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [70155]
+INFO:     Waiting for child process [70155]
+INFO:     Waiting for child process [70156]
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [70156]
+INFO:     Waiting for child process [70157]
+INFO:     Stopping parent process [69819]

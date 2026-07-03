@@ -74,6 +74,7 @@ class Patient(Base):
     date_of_birth = Column(DateTime(timezone=True), nullable=True)
     gender = Column(String(1), nullable=True)  # M, F, O
     phone = Column(String(50), nullable=True)
+    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     address = Column(Text, nullable=True)
 
     # Relationships
@@ -211,6 +212,15 @@ class Report(Base):
     def __repr__(self):
         return f"<Report for Analysis {self.analysis_id}>"
 
+
+class OTPCode(Base):
+    __tablename__ = "otp_codes"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
+    code = Column(String(6), nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    used = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 class AuditLog(Base):
     __tablename__ = "audit_logs"

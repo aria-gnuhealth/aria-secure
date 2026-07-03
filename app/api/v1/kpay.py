@@ -235,7 +235,7 @@ async def get_subscription_status(
             "end_date": result.end_date.isoformat() if result.end_date else None,
             "start_date": result.start_date.isoformat() if result.start_date else None,
             "amount": result.amount,
-            "days_remaining": (result.end_date - datetime.utcnow()).days if result.end_date else 0
+            "days_remaining": (result.end_date.replace(tzinfo=None) - datetime.utcnow()).days if result.end_date else 0
         }
     
     return {
@@ -246,9 +246,14 @@ async def get_subscription_status(
     }
 
 
+from pydantic import BaseModel
+class KPayActivatePayload(BaseModel):
+    reference: str = None
+    kpay_id: str = None
+
 @router.post("/subscription/activate-kpay")
 async def activate_kpay_subscription(
-    payload: dict,
+    payload: KPayActivatePayload,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
@@ -257,8 +262,8 @@ async def activate_kpay_subscription(
     from datetime import datetime, timedelta
     import uuid as uuid_lib
     
-    reference = payload.get("reference")
-    kpay_id = payload.get("kpay_id")
+    reference = payload.reference
+    kpay_id = payload.kpay_id
     
     now = datetime.utcnow()
     end_date = now + timedelta(days=30)

@@ -29,6 +29,22 @@ router = APIRouter()
 # ------------------------------------------------------------
 # ROUTE 1: Rechercher des patients (DOIT ÊTRE AVANT /{patient_id})
 # ------------------------------------------------------------
+@router.get("/patients/used-mrns")
+async def get_all_used_mrns(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    # MRN utilisés par le user courant seulement
+    if current_user.role in ["admin"]:
+        patients = db.query(models.Patient.medical_record_number).all()
+    else:
+        patients = db.query(models.Patient.medical_record_number).filter(
+            models.Patient.created_by == current_user.id
+        ).all()
+    return {"used_mrns": [p.medical_record_number for p in patients]}
+
+# ROUTE 2: Statistiques (DOIT ÊTRE AVANT /{patient_id})
+# ------------------------------------------------------------
 @router.get("/patients/search", response_model=list[PatientResponse])
 async def search_patients(
     q: str = Query(..., min_length=2, description="Terme de recherche (min 2 caractères)"),
@@ -40,20 +56,23 @@ async def search_patients(
     """
     search_term = f"%{q.strip()}%"
     
-    patients = db.query(models.Patient).filter(
+    query = db.query(models.Patient).filter(
         or_(
             models.Patient.first_name.ilike(search_term),
             models.Patient.last_name.ilike(search_term),
             models.Patient.medical_record_number.ilike(search_term)
         )
-    ).order_by(models.Patient.last_name).limit(50).all()
+    )
+    if current_user.role != "admin":
+        query = query.filter(models.Patient.created_by == current_user.id)
+    patients = query.order_by(models.Patient.last_name).limit(50).all()
     
     return [PatientResponse.model_validate(p) for p in patients]
 
 
 # ------------------------------------------------------------
-# ROUTE 2: Statistiques (DOIT ÊTRE AVANT /{patient_id})
-# ------------------------------------------------------------
+# ROUTE 1b: MRN utilisés (tous users)
+
 @router.get("/patients/stats/summary")
 async def get_patient_stats(
     db: Session = Depends(get_db),
@@ -62,18 +81,24 @@ async def get_patient_stats(
     """
     Retourne des statistiques sur les patients.
     """
-    total_patients = db.query(models.Patient).count()
-    total_analyses = db.query(models.Analysis).count()
-    critical_analyses = db.query(models.Analysis).filter(
-        models.Analysis.urgency_level == "CRITIQUE"
-    ).count()
-    pending_analyses = db.query(models.Analysis).filter(
-        models.Analysis.status == "PENDING"
-    ).count()
+    is_admin = current_user.role == "admin"
     
-    male_count = db.query(models.Patient).filter(models.Patient.gender == "M").count()
-    female_count = db.query(models.Patient).filter(models.Patient.gender == "F").count()
-    other_count = db.query(models.Patient).filter(models.Patient.gender == "O").count()
+    patient_query = db.query(models.Patient)
+    if not is_admin:
+        patient_query = patient_query.filter(models.Patient.created_by == current_user.id)
+    
+    analysis_query = db.query(models.Analysis)
+    if not is_admin:
+        analysis_query = analysis_query.filter(models.Analysis.user_id == current_user.id)
+    
+    total_patients = patient_query.count()
+    total_analyses = analysis_query.count()
+    critical_analyses = analysis_query.filter(models.Analysis.urgency_level == "CRITIQUE").count()
+    pending_analyses = analysis_query.filter(models.Analysis.status == "PENDING").count()
+    
+    male_count = patient_query.filter(models.Patient.gender == "M").count()
+    female_count = patient_query.filter(models.Patient.gender == "F").count()
+    other_count = patient_query.filter(models.Patient.gender == "O").count()
     
     return {
         "total_patients": total_patients,
@@ -128,6 +153,9 @@ async def list_patients(
     """
     offset = (page - 1) * per_page
     query = db.query(models.Patient)
+    # Filtrer par user (radiologue n a pas acces aux dossiers patients, seulement aux consultations)
+    if current_user.role != "admin":
+        query = query.filter(models.Patient.created_by == current_user.id)
     total = query.count()
     patients = query.order_by(models.Patient.last_name).offset(offset).limit(per_page).all()
     pages = (total + per_page - 1) // per_page if total > 0 else 1
@@ -184,13 +212,14 @@ async def create_patient(
     Crée un nouveau patient.
     """
     existing = db.query(models.Patient).filter(
-        models.Patient.medical_record_number == patient_data.medical_record_number
+        models.Patient.medical_record_number == patient_data.medical_record_number,
+        models.Patient.created_by == current_user.id
     ).first()
     
     if existing:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Un patient avec le numéro de dossier '{patient_data.medical_record_number}' existe déjà"
+            detail=f"Un patient avec le numéro de dossier '{patient_data.medical_record_number}' existe déjà dans votre compte"
         )
     
     date_of_birth = None
@@ -206,6 +235,7 @@ async def create_patient(
         date_of_birth=date_of_birth,
         gender=patient_data.gender,
         phone=patient_data.phone,
+        created_by=current_user.id,
         address=patient_data.address
     )
     
@@ -291,12 +321,6 @@ async def delete_patient(
     """
     Supprime un patient (admin uniquement).
     """
-    if current_user.role != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Seuls les administrateurs peuvent supprimer des patients"
-        )
-    
     try:
         patient_uuid = uuid.UUID(patient_id)
     except ValueError:
@@ -312,6 +336,22 @@ async def delete_patient(
             detail="Patient non trouvé"
         )
     
+    # Vérifier permission
+    if current_user.role not in ["admin", "radiologist"] and str(patient.created_by) != str(current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Permission refusée"
+        )
+    
+    # Supprimer les dépendances en cascade
+    from sqlalchemy import text as sql_text
+    pid = str(patient.id)
+    db.execute(sql_text("DELETE FROM findings WHERE analysis_id IN (SELECT id FROM analyses WHERE image_id IN (SELECT id FROM images WHERE patient_id=:pid))"), {"pid": pid})
+    db.execute(sql_text("DELETE FROM reports WHERE analysis_id IN (SELECT id FROM analyses WHERE image_id IN (SELECT id FROM images WHERE patient_id=:pid))"), {"pid": pid})
+    db.execute(sql_text("DELETE FROM analyses WHERE image_id IN (SELECT id FROM images WHERE patient_id=:pid)"), {"pid": pid})
+    db.execute(sql_text("DELETE FROM images WHERE patient_id=:pid"), {"pid": pid})
+    db.execute(sql_text("DELETE FROM audit_logs WHERE resource_id=:pid"), {"pid": pid})
+    
     audit_log = models.AuditLog(
         user_id=current_user.id,
         action="PATIENT_DELETED",
@@ -320,7 +360,6 @@ async def delete_patient(
         details=f"Patient supprimé: {patient.first_name} {patient.last_name}"
     )
     db.add(audit_log)
-    
     db.delete(patient)
     db.commit()
     

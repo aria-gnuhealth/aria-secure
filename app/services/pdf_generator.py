@@ -577,6 +577,7 @@ class PDFReportGenerator:
         results: dict,
         findings: list,
         image_url: Optional[str] = None,
+        validator_info: Optional[dict] = None,
     ) -> bytes:
 
         buf = io.BytesIO()
@@ -692,6 +693,7 @@ class PDFReportGenerator:
         patient_info: dict,
         result: dict,
         image_url: Optional[str] = None,
+        validator_info: Optional[dict] = None,
     ) -> bytes:
 
         buf = io.BytesIO()

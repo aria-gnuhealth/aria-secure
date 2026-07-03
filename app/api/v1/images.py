@@ -140,6 +140,8 @@ async def get_image_url(
         )
 
     url = minio_service.get_image_url(image.raw_data_path, expiry_minutes)  # ⚠️ Utilise raw_data_path
+    if url:
+        url = url.replace("http://minio.aria-web.site", "https://minio.aria-web.site")
 
     return ImageUrlResponse(
         url=url,
@@ -340,7 +342,7 @@ async def restore_image(
     current_user: models.User = Depends(get_current_user)
 ):
     """Restaure une image depuis la corbeille (radiologue et admin)"""
-    if current_user.role not in ["radiologist", "admin"]:
+    if current_user.role not in ["doctor", "radiologist", "admin"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Seuls les radiologues et administrateurs peuvent restaurer des radiographies"
@@ -364,7 +366,7 @@ async def delete_image_permanent(
     current_user: models.User = Depends(get_current_user)
 ):
     """Supprime définitivement une image (radiologue et admin)"""
-    if current_user.role not in ["radiologist", "admin"]:
+    if current_user.role not in ["doctor", "radiologist", "admin"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Seuls les radiologues et administrateurs peuvent supprimer définitivement des radiographies"

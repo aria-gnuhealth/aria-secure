@@ -129,6 +129,9 @@ class MinIOService:
                 object_name=object_path,
                 expires=timedelta(minutes=expiry_minutes)
             )
+            # Forcer l URL publique
+            url = url.replace('http://localhost:9000', 'https://minio.aria-web.site')
+            url = url.replace('http://127.0.0.1:9000', 'https://minio.aria-web.site')
             return url
         except S3Error as e:
             print(f"❌ Erreur génération URL: {e}")

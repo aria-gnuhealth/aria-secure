@@ -1,3 +1,4 @@
+from fastapi.responses import RedirectResponse
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Request, Query
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -27,9 +28,14 @@ from app.models.user import (
 from app.utils.email import (
     send_verification_email,
     send_verification_reminder,
-    send_password_reset_email
+    send_password_reset_email,
+    send_role_changed_email,
+    send_account_deactivated_email,
+    send_account_reactivated_email,
+    send_account_deleted_email
 )
 from app.services.audit_service import get_audit_service
+from app.api.v1.chat import manager as ws_manager
 
 router = APIRouter()
 audit_service = get_audit_service()
@@ -173,7 +179,15 @@ async def verify_email(
     user.email_verified_at = datetime.now(timezone.utc)
     db.commit()
     
-    # Envoyer l'email de bienvenue en arrière-plan
+    # Envoyer email de bienvenue
+    try:
+        background_tasks.add_task(send_welcome_email, user.email, user.first_name)
+    except: pass
+    
+    # Rediriger vers le frontend
+    import os
+    frontend_url = os.getenv("FRONTEND_URL", "https://www.aria-web.site")
+    return RedirectResponse(url=f"{frontend_url}/login?verified=true&email={user.email}")
     background_tasks.add_task(
         send_welcome_email,
         user.email,
@@ -256,9 +270,36 @@ async def login(
     
     # ⚠️ VÉRIFIER QUE L'EMAIL EST CONFIRMÉ
     if not user.is_email_verified:
+        from datetime import timezone
+        from app.utils.email import send_verification_email, send_role_changed_email, send_account_deactivated_email, send_account_reactivated_email, send_account_deleted_email, send_role_changed_email, send_account_deactivated_email, send_account_reactivated_email, send_account_deleted_email
+        import secrets
+
+        # Vérifier si le token a expiré (24h après création du compte)
+        now = datetime.now(timezone.utc)
+        created = user.created_at
+        if created.tzinfo is None:
+            created = created.replace(tzinfo=timezone.utc)
+
+        token_age_hours = (now - created).total_seconds() / 3600
+        resent = False
+
+        if token_age_hours > 24:
+            # Token expiré → générer un nouveau et renvoyer
+            new_token = secrets.token_urlsafe(32)
+            user.email_verification_token = new_token
+            user.created_at = datetime.now(timezone.utc)  # reset expiration
+            db.commit()
+            send_verification_email(user.email, new_token)
+            resent = True
+
+        detail_msg = (
+            "Votre lien de vérification avait expiré. Un nouvel email vient d'être envoyé. Pensez à vérifier vos spams."
+            if resent else
+            "Veuillez vérifier votre email avant de vous connecter. Un email a été envoyé à votre adresse. Pensez à vérifier vos spams."
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Veuillez vérifier votre email avant de vous connecter. Un email a été envoyé à votre adresse.",
+            detail=detail_msg,
             headers={"X-Email-Not-Validated": "true"}
         )
     
@@ -575,8 +616,25 @@ async def change_user_role(
     if new_role not in valid_roles:
         raise HTTPException(status_code=400, detail=f"Rôle invalide. Rôles valides: {valid_roles}")
     
+    old_role = user.role
     user.role = new_role
     db.commit()
+    # Notifier l'utilisateur par email
+    try:
+        send_role_changed_email(user.email, user.first_name, old_role, new_role)
+    except Exception as e:
+        print(f"⚠️ Email rôle non envoyé: {e}")
+    # Notifier en temps reel via WebSocket
+    try:
+        import asyncio
+        asyncio.create_task(ws_manager.send_message(str(user.id), {
+            "type": "role_changed",
+            "old_role": old_role,
+            "new_role": new_role,
+            "message": f"Votre rôle a été changé en {new_role}"
+        }))
+    except Exception as e:
+        print(f"⚠️ WS rôle non envoyé: {e}")
     return {"success": True, "message": f"Rôle changé en {new_role}"}
 
 
@@ -599,10 +657,29 @@ async def change_user_status(
     if not user:
         raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
     
-    user.is_active = payload.get("is_active", True)
+    new_status = payload.get("is_active", True)
+    user.is_active = new_status
     db.commit()
-    status = "activé" if user.is_active else "désactivé"
-    return {"success": True, "message": f"Compte {status}"}
+    status_label = "activé" if new_status else "désactivé"
+    # Notifier l'utilisateur par email
+    try:
+        if new_status:
+            send_account_reactivated_email(user.email, user.first_name)
+        else:
+            send_account_deactivated_email(user.email, user.first_name)
+    except Exception as e:
+        print(f"⚠️ Email statut non envoyé: {e}")
+    # Notifier en temps reel via WebSocket
+    try:
+        import asyncio
+        asyncio.create_task(ws_manager.send_message(str(user.id), {
+            "type": "status_changed",
+            "is_active": new_status,
+            "message": f"Votre compte a été {status_label}"
+        }))
+    except Exception as e:
+        print(f"⚠️ WS statut non envoyé: {e}")
+    return {"success": True, "message": f"Compte {status_label}"}
 
 
 @router.post("/users/create")
@@ -650,6 +727,100 @@ async def admin_create_user(
     db.commit()
     return {"success": True, "message": f"Compte {role} créé pour {first_name} {last_name}"}
 
+
+@router.delete("/users/{user_id}")
+async def delete_user(
+    user_id: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Supprimer définitivement un utilisateur (admin uniquement)."""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Accès refusé")
+    try:
+        user_uuid = uuid.UUID(user_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="ID invalide")
+
+    user = db.query(models.User).filter(models.User.id == user_uuid).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
+    if user.id == current_user.id:
+        raise HTTPException(status_code=400, detail="Impossible de supprimer votre propre compte")
+
+    # Sauvegarder infos avant suppression
+    email = user.email
+    first_name = user.first_name
+
+    # Supprimer les logs d'audit liés
+    from sqlalchemy import text
+    db.execute(text("DELETE FROM audit_logs WHERE user_id = :uid"), {"uid": str(user_uuid)})
+    db.delete(user)
+    db.commit()
+
+    # Notifier par email
+    try:
+        send_account_deleted_email(email, first_name)
+    except Exception as e:
+        print(f"⚠️ Email suppression non envoyé: {e}")
+    # Notifier en temps reel via WebSocket avant fermeture de session
+    try:
+        import asyncio
+        asyncio.create_task(ws_manager.send_message(str(user_uuid), {
+            "type": "account_deleted",
+            "message": "Votre compte a été supprimé par un administrateur"
+        }))
+    except Exception as e:
+        print(f"⚠️ WS suppression non envoyé: {e}")
+
+    return {"success": True, "message": f"Utilisateur {email} supprimé définitivement"}
+
+@router.delete("/users/{user_id}")
+async def delete_user(
+    user_id: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Supprimer définitivement un utilisateur (admin uniquement)."""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Accès refusé")
+    try:
+        user_uuid = uuid.UUID(user_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="ID invalide")
+
+    user = db.query(models.User).filter(models.User.id == user_uuid).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
+    if user.id == current_user.id:
+        raise HTTPException(status_code=400, detail="Impossible de supprimer votre propre compte")
+
+    # Sauvegarder infos avant suppression
+    email = user.email
+    first_name = user.first_name
+
+    # Supprimer les logs d'audit liés
+    from sqlalchemy import text
+    db.execute(text("DELETE FROM audit_logs WHERE user_id = :uid"), {"uid": str(user_uuid)})
+    db.delete(user)
+    db.commit()
+
+    # Notifier par email
+    try:
+        send_account_deleted_email(email, first_name)
+    except Exception as e:
+        print(f"⚠️ Email suppression non envoyé: {e}")
+    # Notifier en temps reel via WebSocket avant fermeture de session
+    try:
+        import asyncio
+        asyncio.create_task(ws_manager.send_message(str(user_uuid), {
+            "type": "account_deleted",
+            "message": "Votre compte a été supprimé par un administrateur"
+        }))
+    except Exception as e:
+        print(f"⚠️ WS suppression non envoyé: {e}")
+
+    return {"success": True, "message": f"Utilisateur {email} supprimé définitivement"}
 
 @router.put("/change-password")
 async def change_password(

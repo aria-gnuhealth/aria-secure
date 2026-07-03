@@ -21,6 +21,7 @@ from app.core.security import get_current_user
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+from app.api.v1.chat import manager as ws_manager
 
 
 # ============================================================
@@ -283,6 +284,59 @@ async def validate_analysis(
         db.add(notification)
         db.commit()
 
+    # Regenerer rapport avec avis radiologue
+    try:
+        from app.services.pdf_generator import PDFReportGenerator
+        from app.services.minio_service import minio_service as ms
+        import json as _json
+        pdf_gen = PDFReportGenerator()
+        patient = db.query(models.Patient).filter(models.Patient.id == analysis.patient_id).first()
+        if patient:
+            vname = current_user.first_name + ' ' + current_user.last_name
+            vdate = analysis.validated_at.strftime('%d/%m/%Y %H:%M') if analysis.validated_at else ''
+            validator_info = {'name': vname, 'validated_at': vdate, 'comment': comment or ''}
+            patient_info = {'first_name': patient.first_name, 'last_name': patient.last_name, 'medical_record_number': patient.medical_record_number, 'date_of_birth': str(patient.date_of_birth) if patient.date_of_birth else None, 'gender': patient.gender}
+            results = _json.loads(analysis.results_json) if analysis.results_json else {}
+            findings = [{pathology: f.pathology, probability: f.probability} for f in analysis.findings]
+            heatmap_url = ms.get_image_url(analysis.heatmap_path) if analysis.heatmap_path else None
+            model = db.query(models.AIModel).filter(models.AIModel.id == analysis.ai_model_id).first()
+            is_mura = model and 'mura' in model.name.lower() if model else False
+            if is_mura:
+                pdf_bytes = pdf_gen.generate_mura_report(str(analysis.id), patient_info, results, heatmap_url, validator_info=validator_info)
+            else:
+                pdf_bytes = pdf_gen.generate_chexpert_report(str(analysis.id), patient_info, results, findings, heatmap_url, validator_info=validator_info)
+            if pdf_bytes:
+                pdf_path = ms.upload_image(pdf_bytes, 'application/pdf', str(patient.id), 'rapport_valide_' + str(analysis.id) + '.pdf')
+                existing_report = db.query(models.Report).filter(models.Report.analysis_id == analysis.id).first()
+                if existing_report:
+                    existing_report.pdf_path = pdf_path
+                    existing_report.generated_at = datetime.utcnow()
+                else:
+                    new_rep = models.Report(id=uuid.uuid4(), analysis_id=analysis.id, pdf_path=pdf_path, generated_by=current_user.id, generated_at=datetime.utcnow())
+                    db.add(new_rep)
+                db.commit()
+    except Exception as e:
+        print(f"Rapport validation erreur: {e}")
+
+    # Email medecin
+    try:
+        from app.utils.email import send_email
+        if doctor:
+            html = "<html><body><h2>Analyse validee</h2><p>Dr. " + current_user.first_name + " " + current_user.last_name + " a valide votre analyse.</p></body></html>"
+            send_email(doctor.email, "ARIA - Analyse validee", html)
+    except Exception as e:
+        print(f"Email erreur: {e}")
+    # Notifier en temps reel via WebSocket
+    try:
+        import asyncio
+        if doctor:
+            asyncio.create_task(ws_manager.send_message(str(doctor.id), {
+                "type": "analysis_validated",
+                "analysis_id": analysis_id,
+                "message": "Votre analyse a été validée par le radiologue"
+            }))
+    except Exception as e:
+        print(f"WS validation non envoye: {e}")
     return {
         "success": True,
         "message": "Analyse validée avec succès",
@@ -351,6 +405,21 @@ async def reject_analysis(
     discussion.reviewed_at = datetime.utcnow()
     discussion.review_comment = f"Rejeté: {reason}"
 
+
+    # Envoyer un message dans le chat
+    try:
+        reject_msg = models.Message(
+            id=uuid.uuid4(),
+            discussion_id=discussion.id,
+            sender_id=current_user.id,
+            content="Analyse rejetee. Motif : " + reason + ". Veuillez corriger et soumettre une nouvelle analyse.",
+            message_type="system",
+            created_at=datetime.utcnow()
+        )
+        db.add(reject_msg)
+        db.commit()
+    except Exception as e:
+        print("Message chat rejet erreur: " + str(e))
     db.commit()
 
     # Créer une notification pour le médecin
@@ -366,6 +435,35 @@ async def reject_analysis(
         )
         db.add(notification)
         db.commit()
+    # Email rejet au medecin
+    try:
+        from app.utils.email import send_email
+        if doctor:
+            html = (
+                "<html><body>"
+                "<h2>Analyse rejetee par le radiologue</h2>"
+                "<p>Bonjour " + doctor.first_name + ",</p>"
+                "<p>Le Dr. " + current_user.first_name + " " + current_user.last_name + " a rejete votre analyse.</p>"
+                "<p><b>Motif :</b> " + reason + "</p>"
+                "<p>Veuillez soumettre une nouvelle analyse si necessaire.</p>"
+                "<p>L equipe ARIA Medical</p>"
+                "</body></html>"
+            )
+            send_email(doctor.email, 'ARIA Medical - Analyse rejetee par le radiologue', html)
+    except Exception as e:
+        print("Email rejet: " + str(e))
+    # Notifier en temps reel via WebSocket
+    try:
+        import asyncio
+        if doctor:
+            asyncio.create_task(ws_manager.send_message(str(doctor.id), {
+                "type": "analysis_rejected",
+                "analysis_id": analysis_id,
+                "reason": reason,
+                "message": "Votre analyse a ete rejetee par le radiologue"
+            }))
+    except Exception as e:
+        print("WS rejet non envoye: " + str(e))
 
     return {
         "success": True,
@@ -625,4 +723,4 @@ async def get_pending_analyses(
         "page": page,
         "per_page": per_page,
         "analyses": result
-    }
+}

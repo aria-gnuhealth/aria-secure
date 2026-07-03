@@ -2,7 +2,7 @@
 Endpoints pour le chat docteur-radiologue
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, status, Query, WebSocket, WebSocketDisconnect, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_, desc
 from typing import Optional, List
@@ -23,6 +23,8 @@ from app.models.chat import (
     NotificationResponse,
     DiscussionListResponse
 )
+from app.services.minio_service import minio_service
+
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -193,25 +195,6 @@ async def create_discussion(
     )
     db.add(notification)
     db.commit()
-
-    # Envoyer notification push
-    try:
-        from app.services.push_service import send_push_notification
-        from sqlalchemy import text
-        result = db.execute(
-            text("SELECT push_token FROM users WHERE id = :uid"),
-            {"uid": recipient_id}
-        ).fetchone()
-        if result and result.push_token:
-            import asyncio
-            asyncio.create_task(send_push_notification(
-                token=result.push_token,
-                title=f"💬 {current_user.first_name} {current_user.last_name}",
-                body=data.content[:100],
-                data={"discussionId": str(discussion_uuid)}
-            ))
-    except Exception as e:
-        pass  # Ne pas bloquer si la notification échoue
     
     response_data = {
         "id": discussion.id,
@@ -556,25 +539,6 @@ async def send_message(
     )
     db.add(notification)
     db.commit()
-
-    # Envoyer notification push
-    try:
-        from app.services.push_service import send_push_notification
-        from sqlalchemy import text
-        result = db.execute(
-            text("SELECT push_token FROM users WHERE id = :uid"),
-            {"uid": recipient_id}
-        ).fetchone()
-        if result and result.push_token:
-            import asyncio
-            asyncio.create_task(send_push_notification(
-                token=result.push_token,
-                title=f"💬 {current_user.first_name} {current_user.last_name}",
-                body=data.content[:100],
-                data={"discussionId": str(discussion_uuid)}
-            ))
-    except Exception as e:
-        pass  # Ne pas bloquer si la notification échoue
     
     # Envoyer notification WebSocket
     await manager.send_message(str(recipient_id), {
@@ -667,3 +631,139 @@ async def mark_all_notifications_read(
     db.commit()
     
     return {"success": True, "message": "Toutes les notifications ont été marquées comme lues"}
+
+@router.post("/chat/discussions/{discussion_id}/messages/with-attachment")
+async def send_message_with_attachment(
+    discussion_id: str,
+    content: str = Form(...),
+    attachment: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Envoie un message avec une pièce jointe (image, rapport, etc.)
+    """
+    logger.info(f"📨 Envoi message avec pièce jointe - Discussion: {discussion_id}")
+    logger.info(f"📝 Contenu: {content}")
+    logger.info(f"📎 Fichier: {attachment.filename} - {attachment.content_type}")
+    
+    try:
+        discussion_uuid = uuid.UUID(discussion_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="ID discussion invalide"
+        )
+
+    discussion = db.query(models.Discussion).filter(
+        models.Discussion.id == discussion_uuid
+    ).first()
+    
+    if not discussion:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Discussion non trouvée"
+        )
+
+    # Vérifier que l'utilisateur fait partie de la discussion
+    if current_user.id not in [discussion.doctor_id, discussion.radiologist_id]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Vous n'avez pas accès à cette discussion"
+        )
+
+    # Upload de la pièce jointe
+    attachment_url = None
+    attachment_type = None
+    attachment_name = attachment.filename
+
+    if attachment:
+        try:
+            # Déterminer le type
+            content_type = attachment.content_type
+            if content_type and content_type.startswith('image/'):
+                attachment_type = 'image'
+            elif content_type == 'application/pdf':
+                attachment_type = 'pdf'
+            elif content_type == 'application/dicom':
+                attachment_type = 'dicom'
+            else:
+                attachment_type = 'file'
+
+            # Lire les données du fichier
+            file_data = await attachment.read()
+            logger.info(f"📊 Taille du fichier: {len(file_data)} bytes")
+            
+            # ✅ Utiliser la méthode upload_image existante
+            from app.services.minio_service import minio_service
+            
+            # Générer un patient_id factice pour l'upload (car c'est une discussion, pas un patient)
+            # On utilise l'ID de la discussion comme identifiant
+            patient_id_for_upload = str(discussion_uuid)
+            
+            # Upload vers MinIO avec la méthode upload_image
+            object_path = minio_service.upload_image(
+                image_data=file_data,
+                content_type=content_type or 'application/octet-stream',
+                patient_id=patient_id_for_upload,
+                original_filename=attachment.filename
+            )
+            
+            logger.info(f"✅ Fichier uploadé avec succès: {object_path}")
+            
+            # ✅ Générer l'URL pré-signée avec get_image_url
+            attachment_url = minio_service.get_image_url(object_path, expiry_minutes=60)
+            logger.info(f"🔗 URL pré-signée générée: {attachment_url[:100] if attachment_url else 'None'}...")
+            
+        except Exception as e:
+            logger.error(f"❌ Erreur upload pièce jointe: {e}")
+            attachment_url = None
+
+    # Créer le message
+    new_message = models.Message(
+        id=uuid.uuid4(),
+        discussion_id=discussion_uuid,
+        sender_id=current_user.id,
+        content=content,
+        attachment_url=attachment_url,
+        attachment_type=attachment_type,
+        attachment_name=attachment_name
+    )
+
+    db.add(new_message)
+    
+    # Mettre à jour la discussion
+    discussion.updated_at = datetime.utcnow()
+    
+    db.commit()
+    db.refresh(new_message)
+    
+    logger.info(f"✅ Message créé avec ID: {new_message.id}, attachment_url: {new_message.attachment_url}")
+
+    # Créer une notification pour l'autre participant
+    recipient_id = discussion.doctor_id if current_user.id == discussion.radiologist_id else discussion.radiologist_id
+    
+    notification = models.Notification(
+        id=uuid.uuid4(),
+        user_id=recipient_id,
+        type="new_message",
+        title="Nouveau message avec pièce jointe",
+        message=f"{current_user.first_name} {current_user.last_name} vous a envoyé un message avec une pièce jointe",
+        link=f"/chat/{discussion_id}"
+    )
+    db.add(notification)
+    db.commit()
+
+    return {
+        "id": str(new_message.id),
+        "discussion_id": str(new_message.discussion_id),
+        "sender_id": str(new_message.sender_id),
+        "sender_name": f"{current_user.first_name} {current_user.last_name}",
+        "sender_role": current_user.role,
+        "content": new_message.content,
+        "attachment_url": new_message.attachment_url,
+        "attachment_type": new_message.attachment_type,
+        "attachment_name": new_message.attachment_name,
+        "read_at": new_message.read_at.isoformat() if new_message.read_at else None,
+        "created_at": new_message.created_at.isoformat() if new_message.created_at else None
+    }

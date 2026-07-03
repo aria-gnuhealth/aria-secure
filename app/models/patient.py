@@ -70,6 +70,7 @@ class PatientResponse(BaseModel):
     phone: Optional[str]
     address: Optional[str]
     created_at: datetime
+    created_by: Optional[uuid.UUID] = None
 
     class Config:
         from_attributes = True  # Pour ORM SQLAlchemy

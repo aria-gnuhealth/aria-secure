@@ -230,6 +230,26 @@ async def generate_analysis_report(
     }
 
 
+@router.get("/reports/{report_id}/signed-url")
+async def get_report_signed_url(
+    report_id: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Retourne une URL signée MinIO pour télécharger le rapport PDF."""
+    try:
+        report_uuid = uuid.UUID(report_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="ID rapport invalide")
+    report = db.query(models.Report).filter(models.Report.id == report_uuid).first()
+    if not report:
+        raise HTTPException(status_code=404, detail="Rapport non trouvé")
+    url = minio_service.get_image_url(report.pdf_path)
+    if not url:
+        raise HTTPException(status_code=404, detail="PDF non trouvé")
+    url = url.replace("http://minio.aria-web.site", "https://minio.aria-web.site")
+    return {"url": url, "report_id": str(report.id)}
+
 @router.get("/reports/{report_id}/download")
 async def download_report(
     report_id: str,
@@ -349,10 +369,10 @@ async def delete_report(
     """
     Supprime un rapport (admin uniquement).
     """
-    if current_user.role != "admin":
+    if current_user.role not in ["admin", "doctor", "radiologist"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Seuls les administrateurs peuvent supprimer des rapports"
+            detail="Permission refusée"
         )
 
     try:
@@ -499,3 +519,43 @@ async def get_my_reports(
         "pages": pages,
         "reports": result
     }
+
+@router.get("/reports/patient/{patient_id}")
+async def get_patient_reports(
+    patient_id: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Retourne tous les rapports PDF d un patient."""
+    import uuid as _uuid
+    try:
+        patient_uuid = _uuid.UUID(patient_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="ID patient invalide")
+    
+    # Recuperer toutes les analyses du patient
+    analyses = db.query(models.Analysis).filter(models.Analysis.patient_id == patient_uuid).all()
+    analysis_ids = [a.id for a in analyses]
+    
+    # Recuperer les rapports
+    reports = db.query(models.Report).filter(models.Report.analysis_id.in_(analysis_ids)).order_by(models.Report.generated_at.desc()).all()
+    
+    result = []
+    for r in reports:
+        analysis = next((a for a in analyses if a.id == r.analysis_id), None)
+        url = None
+        try:
+            url = minio_service.get_image_url(r.pdf_path)
+            if url:
+                url = url.replace("http://minio.aria-web.site", "https://minio.aria-web.site")
+        except: pass
+        result.append({
+            "report_id": str(r.id),
+            "analysis_id": str(r.analysis_id),
+            "generated_at": r.generated_at.isoformat() if r.generated_at else None,
+            "urgency": analysis.urgency_level if analysis else None,
+            "model": "MURA" if analysis and analysis.ai_model_id else "CheXpert",
+            "signed_url": url
+        })
+    
+    return {"reports": result, "total": len(result)}
