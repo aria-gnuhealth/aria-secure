@@ -32,7 +32,7 @@ CHEXPERT_PATHOLOGIES = [
     "Support Devices",
 ]
 
-# Seuils de détection
+# Seuils de detection
 CHEXPERT_THRESHOLDS = {
     "No Finding": 0.50,
     "Enlarged Cardiomediastinum": 0.50,
@@ -43,19 +43,18 @@ CHEXPERT_THRESHOLDS = {
     "Consolidation": 0.50,
     "Pneumonia": 0.45,
     "Atelectasis": 0.50,
-    "Pneumothorax": 0.40,
+    "Pneumothorax": 0.50,
     "Pleural Effusion": 0.50,
     "Pleural Other": 0.50,
-    "Fracture": 0.50,
-    "Support Devices": 0.50,
+    "Fracture": 0.45,
+    "Support Devices": 0.60,
 }
 
-# Niveaux d'urgence par pathologie
 CHEXPERT_URGENCY = {
     "Pneumothorax": ("CRITIQUE", "#E74C3C"),
-    "Pneumonia": ("ÉLEVÉ", "#E67E22"),
-    "Edema": ("ÉLEVÉ", "#E67E22"),
-    "Pleural Effusion": ("ÉLEVÉ", "#E67E22"),
+    "Pneumonia": ("ELEVE", "#E67E22"),
+    "Edema": ("ELEVE", "#E67E22"),
+    "Pleural Effusion": ("ELEVE", "#E67E22"),
     "Consolidation": ("MOYEN", "#F1C40F"),
     "Cardiomegaly": ("MOYEN", "#F1C40F"),
     "Lung Opacity": ("MOYEN", "#F1C40F"),
@@ -67,6 +66,30 @@ CHEXPERT_URGENCY = {
     "Support Devices": ("INFO", "#2E75B6"),
     "No Finding": ("NORMAL", "#27AE60"),
 }
+
+# Dictionnaire bilingue des pathologies
+PATHOLOGY_TRANSLATIONS = {
+    "No Finding": {"fr": "Aucune anomalie", "en": "No Finding", "desc_fr": "Aucune pathologie detectee.", "desc_en": "No pathology detected."},
+    "Enlarged Cardiomediastinum": {"fr": "Elargissement cardio-mediastinal", "en": "Enlarged Cardiomediastinum", "desc_fr": "Elargissement de la zone centrale du thorax.", "desc_en": "Widening of the central chest area."},
+    "Cardiomegaly": {"fr": "Cardiomegalie", "en": "Cardiomegaly", "desc_fr": "Augmentation anormale du volume du coeur.", "desc_en": "Abnormal enlargement of the heart."},
+    "Lung Opacity": {"fr": "Opacite pulmonaire", "en": "Lung Opacity", "desc_fr": "Zone de densite accrue dans le poumon.", "desc_en": "Area of increased density in the lung."},
+    "Lung Lesion": {"fr": "Lesion pulmonaire", "en": "Lung Lesion", "desc_fr": "Anomalie localisee dans le tissu pulmonaire.", "desc_en": "Localized abnormality in lung tissue."},
+    "Edema": {"fr": "Oedeme pulmonaire", "en": "Pulmonary Edema", "desc_fr": "Accumulation de liquide dans les poumons.", "desc_en": "Fluid accumulation in the lungs."},
+    "Consolidation": {"fr": "Consolidation pulmonaire", "en": "Consolidation", "desc_fr": "Remplissage des alveoles par du liquide inflammatoire.", "desc_en": "Filling of alveoli with inflammatory fluid."},
+    "Pneumonia": {"fr": "Pneumonie", "en": "Pneumonia", "desc_fr": "Infection pulmonaire causant une inflammation des alveoles.", "desc_en": "Lung infection causing inflammation of the alveoli."},
+    "Atelectasis": {"fr": "Atelectasie", "en": "Atelectasis", "desc_fr": "Affaissement partiel ou total du poumon.", "desc_en": "Partial or complete lung collapse."},
+    "Pneumothorax": {"fr": "Pneumothorax", "en": "Pneumothorax", "desc_fr": "Presence d air entre le poumon et la paroi thoracique.", "desc_en": "Air between the lung and chest wall."},
+    "Pleural Effusion": {"fr": "Epanchement pleural", "en": "Pleural Effusion", "desc_fr": "Accumulation de liquide autour des poumons.", "desc_en": "Fluid accumulation around the lungs."},
+    "Pleural Other": {"fr": "Autre anomalie pleurale", "en": "Pleural Other", "desc_fr": "Autre anomalie de la plevre.", "desc_en": "Other pleural abnormality."},
+    "Fracture": {"fr": "Fracture", "en": "Fracture", "desc_fr": "Cassure d un os visible sur la radiographie.", "desc_en": "Bone break visible on the X-ray."},
+    "Support Devices": {"fr": "Dispositifs medicaux", "en": "Support Devices", "desc_fr": "Materiel medical visible (sondes, catheters, pacemaker).", "desc_en": "Visible medical equipment (tubes, catheters, pacemaker)."},
+}
+
+def get_pathology_label(pathology: str, lang: str = "fr") -> str:
+    return PATHOLOGY_TRANSLATIONS.get(pathology, {}).get(lang, pathology)
+
+def get_pathology_description(pathology: str, lang: str = "fr") -> str:
+    return PATHOLOGY_TRANSLATIONS.get(pathology, {}).get("desc_" + lang, "")
 
 # Normalisation ImageNet
 IMAGENET_MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
@@ -160,6 +183,10 @@ class CheXpertPredictor:
 
             finding = {
                 "pathology": pathologie,
+                "pathology_fr": get_pathology_label(pathologie, 'fr'),
+                "pathology_en": get_pathology_label(pathologie, 'en'),
+                "description_fr": get_pathology_description(pathologie, 'fr'),
+                "description_en": get_pathology_description(pathologie, 'en'),
                 "probability": round(prob, 4),
                 "percentage": f"{prob * 100:.1f}%",
                 "detected": detected,

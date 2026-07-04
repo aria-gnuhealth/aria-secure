@@ -1,6 +1,10 @@
 """
 Service d'annotation d'images pour ARIA
 Génère une image composite : radiographie + panneau de légende
+
+Utilisé par :
+- /api/v1/analyze/chest    -> annotate_chexpert()
+- /api/v1/analyze/fracture -> annotate_mura()
 """
 
 import io
@@ -9,7 +13,7 @@ import os
 import logging
 from typing import List, Dict, Optional, Tuple
 
-from PIL import Image, ImageDraw, ImageFont, ImageEnhance, ImageFilter
+from PIL import Image, ImageDraw, ImageFont, ImageEnhance
 
 logger = logging.getLogger(__name__)
 
@@ -51,8 +55,6 @@ TEXT_PRIMARY  = (230, 230, 245)
 TEXT_MUTED    = (110, 110, 140)
 BORDER_COLOR  = (255, 255, 255, 40)
 
-# ─────────────────────────────────────────────────────────────────────────────
-
 
 def _hex_to_rgb(hex_color: str) -> Tuple[int, int, int]:
     h = hex_color.lstrip("#")
@@ -63,6 +65,45 @@ def _clamp(value: float, lo: float = 0.0, hi: float = 1.0) -> float:
     return max(lo, min(hi, value))
 
 
+def _blend(bg: Tuple[int, int, int], fg: Tuple[int, int, int], alpha: int) -> Tuple[int, int, int]:
+    """
+    Simule un fill semi-transparent sur une image RGB (sans canal alpha réel).
+    Pillow ignore silencieusement le 4e composant d'un tuple RGBA quand on
+    dessine sur une image en mode 'RGB' (il remplit en couleur pleine), ce qui
+    rendait le texte des badges illisible. On calcule donc la couleur finale
+    "à la main" en mélangeant fg dans bg selon alpha (0-255).
+    """
+    a = _clamp(alpha / 255.0)
+    return tuple(int(bg[i] + (fg[i] - bg[i]) * a) for i in range(3))
+
+
+# ---------------------------------------------------------------------------
+# Localisation anatomique approximative par pathologie (CheXpert)
+# ---------------------------------------------------------------------------
+# CheXpert est un modèle de CLASSIFICATION : il ne fournit aucune coordonnée
+# ni boîte englobante. Ces positions sont des zones anatomiques *typiques*
+# pour chaque pathologie (ratios x/y dans l'image), utilisées uniquement à
+# titre indicatif pour orienter le regard du clinicien — ce n'est PAS une
+# détection localisée réelle.
+PATHOLOGY_REGIONS: Dict[str, Tuple[float, float]] = {
+    "Pneumothorax":                 (0.27, 0.20),
+    "Pleural Effusion":             (0.27, 0.80),
+    "Consolidation":                (0.32, 0.60),
+    "Pneumonia":                    (0.32, 0.58),
+    "Atelectasis":                  (0.30, 0.68),
+    "Edema":                        (0.50, 0.50),
+    "Cardiomegaly":                 (0.50, 0.55),
+    "Lung Opacity":                 (0.35, 0.50),
+    "Lung Lesion":                  (0.40, 0.45),
+    "Mass":                         (0.40, 0.40),
+    "Nodule":                       (0.40, 0.40),
+    "Fracture":                     (0.25, 0.40),
+    "Pleural Other":                (0.25, 0.70),
+    "Support Devices":              (0.50, 0.30),
+    "Enlarged Cardiomediastinum":   (0.50, 0.45),
+}
+
+
 def _find_font() -> Optional[str]:
     for path in _FONT_CANDIDATES:
         if os.path.exists(path):
@@ -70,7 +111,9 @@ def _find_font() -> Optional[str]:
     return None
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+def _max_rows(panel_h: int, current_y: int, row_h: int, footer_reserve: int = 50) -> int:
+    available = panel_h - current_y - footer_reserve
+    return max(1, available // row_h)
 
 
 class _FontCache:
@@ -78,7 +121,7 @@ class _FontCache:
 
     def __init__(self, font_path: Optional[str]):
         self._path = font_path
-        self._cache: Dict[Tuple[int, bool], ImageFont.FreeTypeFont] = {}
+        self._cache: Dict[Tuple[int], ImageFont.FreeTypeFont] = {}
         self._default = ImageFont.load_default()
 
     def get(self, size: int) -> ImageFont.FreeTypeFont:
@@ -92,9 +135,6 @@ class _FontCache:
             except Exception:
                 self._cache[key] = self._default
         return self._cache[key]
-
-
-# ─────────────────────────────────────────────────────────────────────────────
 
 
 class ImageAnnotator:
@@ -142,7 +182,7 @@ class ImageAnnotator:
         radius: int = 4,
     ) -> None:
         """Dessine une barre de progression arrondie."""
-        bg = (255, 255, 255, 18)
+        bg = _blend(PANEL_BG, (255, 255, 255), 18)
         ImageAnnotator._rrect(draw, [x, y, x + width, y + height], radius, fill=bg)
         fill_w = max(0, int(width * _clamp(ratio)))
         if fill_w > radius * 2:
@@ -176,6 +216,7 @@ class ImageAnnotator:
         urgency_level: str,
         confidence_score: float,
         title: str,
+        show_index: bool = False,
     ) -> Image.Image:
 
         panel = Image.new("RGB", (width, height), PANEL_BG)
@@ -199,10 +240,10 @@ class ImageAnnotator:
 
         # ── Badge urgence ─────────────────────────────────────────────────
         badge_h = 44
-        alpha_fill = tuple(int(c * 0.18) for c in urgency_rgb)  # transparent fill
+        badge_bg = _blend(PANEL_BG, urgency_rgb, 40)
         self._rrect(
             draw, [p, y, p + uw, y + badge_h], CORNER_RADIUS,
-            fill=(*urgency_rgb, 40), outline=urgency_rgb, width=2
+            fill=badge_bg, outline=urgency_rgb, width=2
         )
         self._text_safe(
             draw, (mid, y + badge_h // 2),
@@ -233,11 +274,11 @@ class ImageAnnotator:
         )
 
         if detected:
-            draw.text(
-                (p, y),
-                f"Pathologies détectées  ({len(detected)})",
-                font=self._f(12), fill=TEXT_MUTED,
-            )
+            header_label = f"Pathologies détectées  ({len(detected)})"
+            draw.text((p, y), header_label, font=self._f(12), fill=TEXT_MUTED)
+            if show_index:
+                self._text_safe(draw, (p + uw, y), "zones indicatives ⓘ",
+                                 self._f(9), TEXT_MUTED, anchor="ra")
             y += 22
 
             row_h    = 30
@@ -248,23 +289,25 @@ class ImageAnnotator:
                 c_rgb  = _hex_to_rgb(c_hex)
                 prob   = _clamp(finding.get("probability", 0.0))
                 row_y  = y + i * row_h
-                dot_cx = p + 7
+                dot_cx = p + 9
 
-                # Fond léger alterné
                 if i % 2 == 0:
-                    draw.rectangle([p - 4, row_y, p + uw + 4, row_y + row_h - 2], fill=(255, 255, 255, 5))
+                    draw.rectangle([p - 4, row_y, p + uw + 4, row_y + row_h - 2],
+                                    fill=_blend(PANEL_BG, (255, 255, 255), 5))
 
-                # Indicateur couleur
-                draw.ellipse([dot_cx - 5, row_y + 10, dot_cx + 5, row_y + 20], fill=c_rgb)
+                if show_index:
+                    draw.ellipse([dot_cx - 9, row_y + 6, dot_cx + 9, row_y + 24], fill=c_rgb)
+                    self._text_safe(draw, (dot_cx, row_y + 15), str(i + 1),
+                                     self._f(11), (255, 255, 255), anchor="mm")
+                else:
+                    draw.ellipse([dot_cx - 5, row_y + 10, dot_cx + 5, row_y + 20], fill=c_rgb)
 
-                # Nom pathologie
                 self._text_safe(
-                    draw, (p + 18, row_y + 8),
+                    draw, (p + 24, row_y + 8),
                     finding.get("pathology", ""),
-                    self._f(12), TEXT_PRIMARY, max_chars=28,
+                    self._f(12), TEXT_PRIMARY, max_chars=26,
                 )
 
-                # Pourcentage + mini-barre
                 bar_w  = 56
                 bar_x  = p + uw - bar_w
                 pct_x  = bar_x - 6
@@ -286,10 +329,9 @@ class ImageAnnotator:
                 y += 18
 
         else:
-            # Aucune pathologie
             box_y = y
             self._rrect(draw, [p, box_y, p + uw, box_y + 46], CORNER_RADIUS,
-                        fill=(39, 174, 96, 18), outline=(39, 174, 96), width=1)
+                        fill=_blend(PANEL_BG, (39, 174, 96), 18), outline=(39, 174, 96), width=1)
             draw.text(
                 (mid, box_y + 23),
                 "✓  Aucune pathologie détectée",
@@ -317,10 +359,11 @@ class ImageAnnotator:
         confidence_score: float,
         title: str,
         extra_overlay_fn=None,
+        show_index: bool = False,
     ) -> Optional[str]:
         """
         Assemble image + légende en un seul canvas et retourne du base64 PNG.
-        `extra_overlay_fn(draw, image_w, image_h)` permet d'ajouter des
+        `extra_overlay_fn(draw, image_w, image_h, img_top)` permet d'ajouter des
         annotations directement sur la zone image.
         """
         img_w, img_h = image.size
@@ -333,6 +376,7 @@ class ImageAnnotator:
             urgency_level=urgency_level,
             confidence_score=confidence_score,
             title=title,
+            show_index=show_index,
         )
 
         total_w = img_w + GAP + LEGEND_WIDTH
@@ -344,7 +388,6 @@ class ImageAnnotator:
 
         draw = ImageDraw.Draw(canvas)
 
-        # Bordure image
         img_top = (total_h - img_h) // 2
         draw.rectangle([0, img_top, img_w - 1, img_top + img_h - 1],
                        outline=BORDER_COLOR, width=1)
@@ -369,7 +412,6 @@ class ImageAnnotator:
                 (int(img.width * ratio), int(img.height * ratio)),
                 Image.Resampling.LANCZOS,
             )
-        # Léger rehaussement du contraste radiologique
         img = ImageEnhance.Contrast(img).enhance(1.15)
         img = ImageEnhance.Sharpness(img).enhance(1.1)
         return img
@@ -383,10 +425,57 @@ class ImageAnnotator:
         urgency_level: str,
         confidence_score: float,
     ) -> Optional[str]:
-        """Annote une radiographie thoracique CheXpert."""
+        """Annote une radiographie thoracique CheXpert (14 pathologies)."""
         try:
             img = self._preprocess(image_data)
-            return self._compose(img, findings, urgency_level, confidence_score, "Thorax")
+
+            detected = sorted(
+                [f for f in findings if f.get("detected") and f.get("pathology") != "No Finding"],
+                key=lambda x: x.get("probability", 0),
+                reverse=True,
+            )
+            # On limite à 3 marqueurs max pour ne pas surcharger l'image ;
+            # l'ordre/numérotation correspond exactement à celui de la légende.
+            markers = detected[:3]
+
+            def _chest_overlay(draw, img_w, img_h, img_top):
+                for idx, finding in enumerate(markers, start=1):
+                    region = PATHOLOGY_REGIONS.get(finding.get("pathology", ""))
+                    if not region:
+                        continue
+                    rx, ry = region
+                    cx = int(rx * img_w)
+                    cy = img_top + int(ry * img_h)
+                    r = max(30, min(img_w, img_h) // 8)
+
+                    c_hex = URGENCY_COLORS.get(finding.get("urgency", "NORMAL"), URGENCY_COLORS["NORMAL"])
+                    c_rgb = _hex_to_rgb(c_hex)
+
+                    # Cercle indicateur (zone anatomique typique, pas une
+                    # détection localisée — CheXpert est un classifieur)
+                    draw.ellipse([cx - r, cy - r, cx + r, cy + r], outline=c_rgb, width=3)
+
+                    # Pastille numérotée (référence à la légende)
+                    tag_r = 11
+                    tag_cy = cy - r - tag_r
+                    draw.ellipse([cx - tag_r, tag_cy - tag_r, cx + tag_r, tag_cy + tag_r], fill=c_rgb)
+                    self._text_safe(draw, (cx, tag_cy), str(idx),
+                                     self._f(12), (255, 255, 255), anchor="mm")
+
+                if markers:
+                    label = "Zones indicatives — pas une localisation exacte"
+                    tw = draw.textlength(label, font=self._f(10))
+                    bx = img_w // 2
+                    by = img_top + img_h - 10
+                    draw.rectangle([bx - tw / 2 - 8, by - 16, bx + tw / 2 + 8, by + 4],
+                                    fill=(10, 10, 22))
+                    self._text_safe(draw, (bx, by), label, self._f(10), (230, 230, 245), anchor="mb")
+
+            return self._compose(
+                img, findings, urgency_level, confidence_score, "Thorax",
+                extra_overlay_fn=_chest_overlay,
+                show_index=True,
+            )
         except Exception:
             logger.exception("Erreur annotation CheXpert")
             return None
@@ -397,11 +486,11 @@ class ImageAnnotator:
         result: Dict,
         is_fracture: bool,
     ) -> Optional[str]:
-        """Annote une radiographie osseuse MURA."""
+        """Annote une radiographie osseuse MURA (détection de fracture)."""
         try:
             img  = self._preprocess(image_data)
             prob = _clamp(result.get("probability", 0.0))
-            urgency   = result.get("urgency", "NORMAL")
+            urgency    = result.get("urgency", "NORMAL")
             confidence = result.get("confidence", 0.0)
 
             findings = [
@@ -420,10 +509,8 @@ class ImageAnnotator:
                     return
                 cx, cy = img_w // 2, img_top + img_h // 2
                 r = min(img_w, img_h) // 6
-                # Cercle indicateur
                 draw.ellipse([cx - r, cy - r, cx + r, cy + r],
                              outline=(231, 76, 60), width=3)
-                # Petite étiquette
                 lbl = "FRACTURE"
                 draw.text((cx, cy + r + 10), lbl,
                           font=self._f(14), fill=(231, 76, 60), anchor="mt")
@@ -436,15 +523,6 @@ class ImageAnnotator:
         except Exception:
             logger.exception("Erreur annotation MURA")
             return None
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Helpers internes
-# ─────────────────────────────────────────────────────────────────────────────
-
-def _max_rows(panel_h: int, current_y: int, row_h: int, footer_reserve: int = 50) -> int:
-    available = panel_h - current_y - footer_reserve
-    return max(1, available // row_h)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

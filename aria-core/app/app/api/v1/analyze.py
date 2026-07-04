@@ -142,6 +142,44 @@ async def analyze_chest(
         analysis.results_json = json.dumps(result["findings"], ensure_ascii=False)
         db.commit()
 
+        # Generer le rapport PDF automatiquement apres analyse CheXpert
+        try:
+            from app.services.pdf_generator import get_pdf_generator as _get_pdf
+            from app.services.minio_service import minio_service as _ms
+            _patient = db.query(models.Patient).filter(models.Patient.id == analysis.patient_id).first()
+            _patient_info = {
+                "first_name": _patient.first_name if _patient else "",
+                "last_name": _patient.last_name if _patient else "",
+                "date_of_birth": str(_patient.date_of_birth) if _patient and _patient.date_of_birth else "—",
+                "gender": _patient.gender if _patient else "",
+                "medical_record_number": _patient.medical_record_number if _patient else "—"
+            }
+            _chexpert_results = {
+                "global_urgency": result["global_urgency"],
+                "confidence_score": result["confidence_score"],
+                "is_normal": len([f for f in result["findings"] if f.get("detected")]) == 0
+            }
+            _pdf_gen = _get_pdf()
+            _pdf_bytes = _pdf_gen.generate_chexpert_report(
+                analysis_id=str(analysis.id),
+                patient_info=_patient_info,
+                results=_chexpert_results,
+                findings=result["findings"],
+                image_url=None
+            )
+            _pdf_filename = _ms.upload_pdf(pdf_data=_pdf_bytes, patient_id=str(analysis.patient_id), analysis_id=str(analysis.id))
+            _existing = db.query(models.Report).filter(models.Report.analysis_id == analysis.id).first()
+            if _existing:
+                _existing.pdf_path = _pdf_filename
+            else:
+                import uuid as _uuid2
+                db.add(models.Report(id=_uuid2.uuid4(), analysis_id=analysis.id, pdf_path=_pdf_filename, generated_by=current_user.id))
+            db.commit()
+            logger.info(f"✅ Rapport PDF auto genere: {_pdf_filename}")
+        except Exception as _e:
+            logger.error(f"❌ Auto rapport CheXpert: {_e}")
+
+
         # 8. Sauvegarder les findings individuels
         for finding in result["findings"]:
             if finding["detected"] and finding["pathology"] != "No Finding":
@@ -310,6 +348,26 @@ async def analyze_fracture(
         analysis.results_json = json.dumps(result, ensure_ascii=False)
         db.commit()
 
+
+        # Generer le rapport PDF automatiquement apres analyse MURA
+        try:
+            from app.services.pdf_generator import get_pdf_generator as _get_pdf2
+            from app.services.minio_service import minio_service as _ms2
+            _patient2 = db.query(models.Patient).filter(models.Patient.id == analysis.patient_id).first()
+            _patient_info2 = {"first_name": _patient2.first_name if _patient2 else "", "last_name": _patient2.last_name if _patient2 else "", "date_of_birth": str(_patient2.date_of_birth) if _patient2 and _patient2.date_of_birth else "—", "gender": _patient2.gender if _patient2 else "", "medical_record_number": _patient2.medical_record_number if _patient2 else "—"}
+            _pdf_gen2 = _get_pdf2()
+            _pdf_bytes2 = _pdf_gen2.generate_mura_report(analysis_id=str(analysis.id), patient_info=_patient_info2, result=result, image_url=heatmap_url)
+            _pdf_filename2 = _ms2.upload_pdf(pdf_data=_pdf_bytes2, patient_id=str(analysis.patient_id), analysis_id=str(analysis.id))
+            _existing2 = db.query(models.Report).filter(models.Report.analysis_id == analysis.id).first()
+            if _existing2:
+                _existing2.pdf_path = _pdf_filename2
+            else:
+                import uuid as _uuid3
+                db.add(models.Report(id=_uuid3.uuid4(), analysis_id=analysis.id, pdf_path=_pdf_filename2, generated_by=current_user.id))
+            db.commit()
+            logger.info(f"✅ Rapport PDF MURA auto: {_pdf_filename2}")
+        except Exception as _e2:
+            logger.error(f"❌ Auto rapport MURA: {_e2}")
         # 8. Sauvegarder le finding si fracture détectée
         if result["is_abnormal"]:
             db_finding = models.Finding(

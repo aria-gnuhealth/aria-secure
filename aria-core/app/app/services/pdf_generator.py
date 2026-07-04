@@ -1,3 +1,5 @@
+# app/services/pdf_generator.py
+
 """
 Service de génération de rapports PDF pour ARIA
 Produit des comptes rendus d'analyse radiographique à l'aspect officiel et médical.
@@ -8,6 +10,7 @@ import os
 import logging
 from datetime import datetime
 from typing import Optional
+from urllib.parse import urlparse
 
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT, TA_JUSTIFY
@@ -45,6 +48,7 @@ C = {
     "success":   colors.HexColor("#1E8449"),
     "orange":    colors.HexColor("#CA6F1E"),
     "info":      colors.HexColor("#1A5276"),
+    "gold":      colors.HexColor("#D4AF37"),
 }
 
 URGENCY_PALETTE = {
@@ -135,6 +139,50 @@ class _UrgencyBanner(Flowable):
         c.setFillColor(colors.white)
         c.setFont(_f(bold=True), 11)
         c.drawCentredString(w / 2, h / 2 - 3.5, self._label)
+
+
+class _ValidationBadge(Flowable):
+    """Badge de validation pour le rapport."""
+
+    def __init__(self, width: float, height: float = 10 * mm, 
+                 validator_name: str = "", validated_at: str = ""):
+        super().__init__()
+        self.width = width
+        self.height = height
+        self.validator_name = validator_name
+        self.validated_at = validated_at
+
+    def wrap(self, *args):
+        return self.width, self.height
+
+    def draw(self):
+        c = self.canv
+        w, h = self.width, self.height
+
+        # Fond vert
+        c.setFillColor(C["success"])
+        c.roundRect(0, 0, w, h, 4, fill=1, stroke=0)
+
+        # Coche
+        c.setFillColor(colors.white)
+        c.setFont(_f(bold=True), 14)
+        c.drawString(8 * mm, h / 2 - 4, "✓")
+
+        # Texte
+        c.setFont(_f(bold=True), 9)
+        c.setFillColor(colors.white)
+        c.drawString(14 * mm, h / 2 + 2, "RAPPORT VALIDÉ")
+
+        # Détails du validateur
+        if self.validator_name:
+            c.setFont(_f(), 7)
+            c.setFillColor(colors.white)
+            c.drawString(14 * mm, h / 2 - 5, f"par {self.validator_name}")
+
+        if self.validated_at:
+            c.setFont(_f(), 7)
+            c.setFillColor(colors.white)
+            c.drawRightString(w - 8 * mm, h / 2 - 5, self.validated_at)
 
 
 class _ProgressBar(Flowable):
@@ -466,16 +514,14 @@ def _full_scores_table(findings: list, styles: dict, usable_w: float) -> Table:
     return t
 
 
-def _recommendations(urgency_level: str, extra: list, styles: dict) -> list:
+def _recommendations(urgency_level: str, extra: list, styles: dict, is_validated: bool = False) -> list:
     base = {
         "CRITIQUE": [
             "Consultation médicale en urgence requise dans les 24 heures.",
-            "Ce résultat doit impérativement être validé par un radiologue qualifié.",
             "Des examens complémentaires (scanner, IRM, biopsie) sont fortement conseillés.",
         ],
         "ÉLEVÉ": [
             "Une consultation spécialisée est recommandée dans les 48 à 72 heures.",
-            "Un radiologue doit valider ce compte rendu avant tout acte thérapeutique.",
             "Un examen de suivi à court terme est conseillé.",
         ],
         "MOYEN": [
@@ -487,15 +533,40 @@ def _recommendations(urgency_level: str, extra: list, styles: dict) -> list:
         "Un suivi clinique de routine reste conseillé.",
     ])
 
-    items = base + (extra or []) + [
-        "Ce rapport est généré automatiquement et constitue une aide à la décision médicale.",
-        "Il ne saurait se substituer au jugement clinique d'un professionnel de santé diplômé.",
-    ]
+    items = base + (extra or [])
+
+    # ✅ Si validé, ajouter une mention de validation et retirer le message "contacter un radiologue"
+    if is_validated:
+        # ✅ Ajouter la mention de validation
+        items.append("✅ Ce rapport a été validé par un radiologue.")
+        # ✅ Supprimer les messages qui mentionnent de contacter un radiologue
+        items = [item for item in items if "radiologue" not in item.lower() and "valider" not in item.lower()]
+    else:
+        # ❌ Si non validé, ajouter le message pour contacter un radiologue
+        items.append("⚠️ Ce rapport doit impérativement être validé par un radiologue qualifié.")
+        items.append("📋 Veuillez contacter un radiologue pour validation.")
+
+    # Toujours ajouter cette mention
+    items.append("")
+    items.append("Ce rapport est généré automatiquement et constitue une aide à la décision médicale.")
+    items.append("Il ne saurait se substituer au jugement clinique d'un professionnel de santé diplômé.")
 
     elems = []
     for item in items:
-        prefix = "<font color='#1F6B9E'><b>›</b></font>  "
-        elems.append(Paragraph(prefix + item, styles["rec"]))
+        if item.startswith("✅"):
+            # Validation en vert
+            prefix = "<font color='#1E8449'><b>✓</b></font>  "
+            elems.append(Paragraph(prefix + item[2:], styles["rec"]))
+        elif item.startswith("⚠️"):
+            # Avertissement en orange
+            prefix = "<font color='#D68910'><b>⚠</b></font>  "
+            elems.append(Paragraph(prefix + item[2:], styles["rec"]))
+        elif item.startswith("📋"):
+            # Message en bleu
+            prefix = "<font color='#1F6B9E'><b>📋</b></font>  "
+            elems.append(Paragraph(prefix + item[2:], styles["rec"]))
+        else:
+            elems.append(Paragraph(item, styles["rec"]))
         elems.append(Spacer(1, 2))
     return elems
 
@@ -536,29 +607,91 @@ def _build_doc(buffer: io.BytesIO, analysis_id: str, report_type: str) -> tuple:
 
 
 def _load_image(url: str) -> Optional[bytes]:
+    """
+    Charge une image depuis une URL.
+    Si c'est une URL locale (minio), utilise l'API interne.
+    """
     try:
+        # Si l'URL est locale (minio), on utilise l'API interne
+        parsed_url = urlparse(url)
+        if parsed_url.netloc and (parsed_url.netloc.startswith('minio') or 'localhost' in parsed_url.netloc or '127.0.0.1' in parsed_url.netloc):
+            # Pour les URLs locales, on utilise le service minio directement
+            try:
+                from app.services.minio_service import minio_service
+                # Extraire le chemin du bucket
+                path_parts = parsed_url.path.strip('/').split('/', 1)
+                if len(path_parts) >= 2:
+                    # Le chemin pourrait être bucket/path
+                    object_path = path_parts[-1]  # Prendre le dernier segment comme chemin
+                    logger.info(f"Tentative de chargement depuis MinIO: {object_path}")
+                    image_data = minio_service.get_image_data(object_path)
+                    if image_data:
+                        logger.info(f"✅ Image chargée depuis MinIO: {len(image_data)} bytes")
+                        return image_data
+            except Exception as e:
+                logger.warning(f"Erreur chargement depuis MinIO: {e}")
+
+        # Si ce n'est pas une URL locale ou que MinIO a échoué, on essaie HTTP
         import requests
-        r = requests.get(url, timeout=30)
-        if r.status_code == 200:
-            return r.content
+        logger.info(f"Tentative de téléchargement HTTP: {url}")
+        response = requests.get(url, timeout=30)
+        if response.status_code == 200:
+            content_type = response.headers.get('content-type', '')
+            if 'image' in content_type:
+                logger.info(f"✅ Image téléchargée via HTTP: {len(response.content)} bytes")
+                return response.content
+            else:
+                logger.warning(f"Content-Type n'est pas une image: {content_type}")
+        else:
+            logger.warning(f"HTTP {response.status_code} pour {url}")
     except Exception as e:
-        logger.error("Récupération image: %s", e)
+        logger.error(f"Erreur chargement image: {e}")
+    
     return None
 
 
 def _insert_image(image_url: Optional[str], usable_w: float, styles: dict) -> list:
+    """Insère une image dans le PDF, avec fallback."""
     if not image_url:
-        return []
-    data = _load_image(image_url)
-    if not data:
+        logger.info("Aucune image URL fournie")
         return [Paragraph("Image non disponible.", styles["small"]), Spacer(1, 4 * mm)]
+    
+    # Taille de l'image (proportionnelle)
+    img_width = usable_w * 0.72
+    img_height = usable_w * 0.48
+    
     try:
-        img = Image(io.BytesIO(data), width=usable_w * 0.72, height=usable_w * 0.48, kind="proportional")
-        img.hAlign = "CENTER"
-        return [img, Spacer(1, 4 * mm)]
+        image_data = _load_image(image_url)
+        if image_data:
+            try:
+                from PIL import Image as PILImage
+                import io
+                
+                # Vérifier que c'est bien une image valide
+                pil_image = PILImage.open(io.BytesIO(image_data))
+                
+                # Calculer les dimensions réelles pour éviter la distorsion
+                img = Image(io.BytesIO(image_data))
+                img.drawWidth = min(img_width, img.imageWidth if hasattr(img, 'imageWidth') else img_width)
+                img.drawHeight = min(img_height, img.imageHeight if hasattr(img, 'imageHeight') else img_height)
+                img.hAlign = 'CENTER'
+                
+                logger.info(f"✅ Image insérée dans le PDF: {img.drawWidth}x{img.drawHeight}")
+                return [img, Spacer(1, 4 * mm)]
+            except Exception as e:
+                logger.error(f"Erreur lors de l'insertion de l'image: {e}")
+                return [
+                    Paragraph("Erreur d'insertion de l'image.", styles["warn"]),
+                    Spacer(1, 2 * mm),
+                    Paragraph(str(e), styles["small"]),
+                    Spacer(1, 4 * mm)
+                ]
+        else:
+            logger.warning(f"Impossible de charger l'image depuis: {image_url}")
+            return [Paragraph("Image non disponible.", styles["small"]), Spacer(1, 4 * mm)]
     except Exception as e:
-        logger.error("Insertion image: %s", e)
-        return [Paragraph("Erreur d'insertion de l'image.", styles["small"])]
+        logger.error(f"Erreur inattendue lors de l'insertion de l'image: {e}")
+        return [Paragraph("Image non disponible.", styles["small"]), Spacer(1, 4 * mm)]
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -577,7 +710,9 @@ class PDFReportGenerator:
         results: dict,
         findings: list,
         image_url: Optional[str] = None,
-        validator_info: Optional[dict] = None,
+        is_validated: bool = False,
+        validator_name: Optional[str] = None,
+        validated_at: Optional[str] = None,
     ) -> bytes:
 
         buf = io.BytesIO()
@@ -604,6 +739,13 @@ class PDFReportGenerator:
         confidence    = max(0.0, min(1.0, results.get("confidence_score", 0.0)))
 
         story.extend(_section_header("Résultat de l'analyse", S, uw))
+        
+        # ✅ Badge de validation si présent
+        if is_validated:
+            story.append(Spacer(1, 2 * mm))
+            story.append(_ValidationBadge(uw * 0.5, 10 * mm, validator_name or "", validated_at or ""))
+            story.append(Spacer(1, 4 * mm))
+        
         story.append(_UrgencyBanner(urgency_level, uw))
         story.append(Spacer(1, 3 * mm))
 
@@ -640,34 +782,7 @@ class PDFReportGenerator:
 
         # ── Recommandations ───────────────────────────────────────────────
         story.extend(_section_header("Recommandations cliniques", S, uw))
-        story.extend(_recommendations(urgency_level, [], S))
-
-        # ── Validation radiologue ─────────────────────────────────────────
-        if validator_info:
-            story.append(Spacer(1, 6 * mm))
-            story.extend(_section_header("Validation par le radiologue", S, uw))
-            story.append(Paragraph(
-                f"✅ Cette analyse a été vérifiée et validée par <b>{validator_info['name']}</b> "
-                f"le {validator_info['validated_at']}.",
-                S["body"]
-            ))
-            if validator_info.get("comment"):
-                story.append(Spacer(1, 3 * mm))
-                story.append(Paragraph(
-                    f"<b>Commentaire clinique :</b> {validator_info['comment']}",
-                    S["body"]
-                ))
-            story.append(Spacer(1, 3 * mm))
-            story.append(Paragraph(
-                "Ce rapport a été relu et approuvé par un professionnel de santé qualifié.",
-                S["small"]
-            ))
-        else:
-            story.append(Spacer(1, 4 * mm))
-            story.append(Paragraph(
-                "⚠️ Ce rapport n\'a pas encore été validé par un radiologue.",
-                S["small"]
-            ))
+        story.extend(_recommendations(urgency_level, [], S, is_validated))
 
         # ── Note légale ───────────────────────────────────────────────────
         story.append(Spacer(1, 6 * mm))
@@ -693,7 +808,9 @@ class PDFReportGenerator:
         patient_info: dict,
         result: dict,
         image_url: Optional[str] = None,
-        validator_info: Optional[dict] = None,
+        is_validated: bool = False,
+        validator_name: Optional[str] = None,
+        validated_at: Optional[str] = None,
     ) -> bytes:
 
         buf = io.BytesIO()
@@ -723,6 +840,12 @@ class PDFReportGenerator:
         urgency      = result.get("urgency", "NORMAL")
 
         story.extend(_section_header("Résultat de l'analyse", S, uw))
+        
+        # ✅ Badge de validation si présent
+        if is_validated:
+            story.append(Spacer(1, 2 * mm))
+            story.append(_ValidationBadge(uw * 0.5, 10 * mm, validator_name or "", validated_at or ""))
+            story.append(Spacer(1, 4 * mm))
 
         diag_level = urgency if is_fracture else "NORMAL"
         story.append(_UrgencyBanner(diag_level, uw))
@@ -764,34 +887,7 @@ class PDFReportGenerator:
         custom = []
         if result.get("recommandation"):
             custom.append(result["recommandation"])
-        story.extend(_recommendations(urgency if is_fracture else "NORMAL", custom, S))
-
-        # ── Validation radiologue ─────────────────────────────────────────
-        if validator_info:
-            story.append(Spacer(1, 6 * mm))
-            story.extend(_section_header("Validation par le radiologue", S, uw))
-            story.append(Paragraph(
-                f"✅ Cette analyse a été vérifiée et validée par <b>{validator_info['name']}</b> "
-                f"le {validator_info['validated_at']}.",
-                S["body"]
-            ))
-            if validator_info.get("comment"):
-                story.append(Spacer(1, 3 * mm))
-                story.append(Paragraph(
-                    f"<b>Commentaire clinique :</b> {validator_info['comment']}",
-                    S["body"]
-                ))
-            story.append(Spacer(1, 3 * mm))
-            story.append(Paragraph(
-                "Ce rapport a été relu et approuvé par un professionnel de santé qualifié.",
-                S["small"]
-            ))
-        else:
-            story.append(Spacer(1, 4 * mm))
-            story.append(Paragraph(
-                "⚠️ Ce rapport n\'a pas encore été validé par un radiologue.",
-                S["small"]
-            ))
+        story.extend(_recommendations(urgency if is_fracture else "NORMAL", custom, S, is_validated))
 
         # ── Note légale ───────────────────────────────────────────────────
         story.append(Spacer(1, 6 * mm))

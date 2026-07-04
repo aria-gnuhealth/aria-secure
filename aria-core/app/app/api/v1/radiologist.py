@@ -297,14 +297,14 @@ async def validate_analysis(
             validator_info = {'name': vname, 'validated_at': vdate, 'comment': comment or ''}
             patient_info = {'first_name': patient.first_name, 'last_name': patient.last_name, 'medical_record_number': patient.medical_record_number, 'date_of_birth': str(patient.date_of_birth) if patient.date_of_birth else None, 'gender': patient.gender}
             results = _json.loads(analysis.results_json) if analysis.results_json else {}
-            findings = [{pathology: f.pathology, probability: f.probability} for f in analysis.findings]
+            findings = [{pathology: f.pathology, probability: f.probability, detected: True, urgency: MOYEN} for f in analysis.findings]
             heatmap_url = ms.get_image_url(analysis.heatmap_path) if analysis.heatmap_path else None
             model = db.query(models.AIModel).filter(models.AIModel.id == analysis.ai_model_id).first()
             is_mura = model and 'mura' in model.name.lower() if model else False
             if is_mura:
-                pdf_bytes = pdf_gen.generate_mura_report(str(analysis.id), patient_info, results, heatmap_url, validator_info=validator_info)
+                pdf_bytes = pdf_gen.generate_mura_report(str(analysis.id), patient_info, results, heatmap_url, is_validated=True, validator_name=vname, validated_at=vdate)
             else:
-                pdf_bytes = pdf_gen.generate_chexpert_report(str(analysis.id), patient_info, results, findings, heatmap_url, validator_info=validator_info)
+                pdf_bytes = pdf_gen.generate_chexpert_report(str(analysis.id), patient_info, results, findings, heatmap_url, is_validated=True, validator_name=vname, validated_at=vdate)
             if pdf_bytes:
                 pdf_path = ms.upload_image(pdf_bytes, 'application/pdf', str(patient.id), 'rapport_valide_' + str(analysis.id) + '.pdf')
                 existing_report = db.query(models.Report).filter(models.Report.analysis_id == analysis.id).first()
@@ -316,7 +316,46 @@ async def validate_analysis(
                     db.add(new_rep)
                 db.commit()
     except Exception as e:
-        print(f"Rapport validation erreur: {e}")
+        import traceback; traceback.print_exc(); print(f"Rapport validation erreur: {e}", flush=True)
+
+    # Envoyer le rapport valide dans le chat
+    try:
+        report = db.query(models.Report).filter(models.Report.analysis_id == analysis.id).first()
+        if report and discussion:
+            from app.services.minio_service import minio_service as _ms3
+            report_url = _ms3.get_image_url(report.pdf_path)
+            if report_url:
+                report_url = report_url.replace("http://minio.aria-web.site", "https://minio.aria-web.site")
+            val_msg = models.Message(
+                id=uuid.uuid4(),
+                discussion_id=discussion.id,
+                sender_id=current_user.id,
+                content="Analyse validee. Voici le rapport PDF avec mon avis clinique.",
+                attachment_url=report_url,
+                attachment_type="pdf",
+                attachment_name=f"rapport_valide_{analysis_id}.pdf"
+            )
+            db.add(val_msg)
+            db.commit()
+            import asyncio
+            if doctor:
+                asyncio.create_task(ws_manager.send_message(str(doctor.id), {
+                    type: new_message,
+                    id: str(val_msg.id),
+                    discussion_id: str(discussion.id),
+                    sender_id: str(current_user.id),
+                    sender_name: current_user.first_name +   + current_user.last_name,
+                    sender_role: radiologist,
+                    content: val_msg.content,
+                    attachment_url: report_url,
+                    attachment_type: pdf,
+                    attachment_name: val_msg.attachment_name,
+                    message_type: text,
+                    read_at: None,
+                    created_at: val_msg.created_at.isoformat() if val_msg.created_at else None
+                }))
+    except Exception as e:
+        print(f"Envoi rapport chat erreur: {e}")
 
     # Email medecin
     try:

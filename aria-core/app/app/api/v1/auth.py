@@ -340,7 +340,38 @@ async def login(
         details=f"Connexion réussie depuis {request.client.host if request.client else 'unknown'}"
     )
 
-    
+    # Notifier les admins en temps reel via WebSocket
+    try:
+        import asyncio
+        admins = db.query(models.User).filter(models.User.role == "admin", models.User.is_active == True).all()
+        for admin in admins:
+            asyncio.create_task(ws_manager.send_message(str(admin.id), {
+                "type": "user_connected",
+                "user_id": str(user.id),
+                "role": user.role,
+                "message": str(user.first_name) + " " + str(user.last_name) + " vient de se connecter"
+            }))
+    except Exception as e:
+        print("WS login notification: " + str(e))
+
+    # Publier sur Redis Pub/Sub pour notifier tous les backends
+    try:
+        from app.services.redis_service import get_redis_service
+        rs = get_redis_service()
+        rs.client.sadd("aria:online_users", str(user.id))
+        rs.client.expire("aria:online_users", 3600)
+        rs.client.sadd("aria:online_users", str(user.id))
+        rs.client.expire("aria:online_users", 3600)
+        rs.publish("aria:user_connected", {
+            "type": "user_connected",
+            "user_id": str(user.id),
+            "role": user.role,
+            "first_name": str(user.first_name),
+            "last_name": str(user.last_name)
+        })
+    except Exception as e:
+        print("Redis publish login: " + str(e))
+
     return TokenResponse(
         access_token=access_token,
         token_type="bearer",
@@ -381,6 +412,14 @@ async def get_me(
 async def logout(
     current_user: models.User = Depends(get_current_user)
 ):
+    # Publier deconnexion sur Redis
+    try:
+        import redis as _redis, json as _json
+        r = _redis.Redis(host="127.0.0.1", port=6379, password="AriaRedis2026Secure2026", decode_responses=True, protocol=2)
+        r.srem("aria:online_users", str(current_user.id))
+        r.publish("aria:user_disconnected", _json.dumps({"type": "user_disconnected", "user_id": str(current_user.id), "role": current_user.role}))
+    except Exception as e:
+        print("Redis logout: " + str(e))
     return MessageResponse(
         message="Déconnexion réussie. Supprimez le token côté client.",
         success=True
@@ -586,11 +625,49 @@ async def get_all_users(
             "role": u.role,
             "is_active": u.is_active,
             "is_email_verified": u.is_email_verified,
+            "is_premium": any(
+                s.status == "active" and s.end_date and s.end_date > datetime.utcnow()
+                for s in u.subscriptions
+            ) if u.subscriptions else False,
+            "is_email_verified": u.is_email_verified,
             "created_at": u.created_at.isoformat() if u.created_at else None,
         }
         for u in users
     ]
 
+
+@router.put("/users/{user_id}/verify")
+async def admin_verify_user(
+    user_id: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Accès réservé aux administrateurs")
+    try:
+        user_uuid = uuid.UUID(user_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="ID invalide")
+    user = db.query(models.User).filter(models.User.id == user_uuid).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
+    user.is_email_verified = True
+    db.commit()
+    try:
+        from app.utils.email import send_email
+        html = (
+            "<html><body>"
+            "<h2>Compte vérifié</h2>"
+            "<p>Bonjour " + user.first_name + ",</p>"
+            "<p>Votre compte ARIA Medical a été <strong>vérifié manuellement</strong> par un administrateur.</p>"
+            "<p>Vous pouvez maintenant vous connecter normalement.</p>"
+            "<p>L equipe ARIA Medical</p>"
+            "</body></html>"
+        )
+        send_email(user.email, "ARIA Medical - Compte vérifié", html)
+    except Exception as e:
+        print("Email verify: " + str(e))
+    return {"success": True, "message": f"Compte de {user.first_name} {user.last_name} vérifié"}
 
 @router.put("/users/{user_id}/role")
 async def change_user_role(
@@ -752,9 +829,30 @@ async def delete_user(
     email = user.email
     first_name = user.first_name
 
-    # Supprimer les logs d'audit liés
+    # Supprimer toutes les dependances en cascade
     from sqlalchemy import text
-    db.execute(text("DELETE FROM audit_logs WHERE user_id = :uid"), {"uid": str(user_uuid)})
+    uid = str(user_uuid)
+    # Mettre a NULL les references optionnelles
+    db.execute(text("UPDATE reports SET generated_by = NULL WHERE generated_by = CAST(:uid AS uuid)"), {"uid": uid})
+    db.execute(text("UPDATE analyses SET validated_by = NULL WHERE validated_by = CAST(:uid AS uuid)"), {"uid": uid})
+    db.execute(text("UPDATE discussions SET reviewed_by = NULL WHERE reviewed_by = CAST(:uid AS uuid)"), {"uid": uid})
+    # Supprimer les enregistrements lies
+    db.execute(text("DELETE FROM messages WHERE sender_id = CAST(:uid AS uuid)"), {"uid": uid})
+    db.execute(text("DELETE FROM notifications WHERE user_id = CAST(:uid AS uuid)"), {"uid": uid})
+    db.execute(text("DELETE FROM subscriptions WHERE user_id = CAST(:uid AS uuid)"), {"uid": uid})
+    db.execute(text("DELETE FROM user_preferences WHERE user_id = CAST(:uid AS uuid)"), {"uid": uid})
+    db.execute(text("DELETE FROM otp_codes WHERE user_id = CAST(:uid AS uuid)"), {"uid": uid})
+    db.execute(text("DELETE FROM ad_views WHERE user_id = CAST(:uid AS uuid)"), {"uid": uid})
+    db.execute(text("DELETE FROM audit_logs WHERE user_id = CAST(:uid AS uuid)"), {"uid": uid})
+    # Supprimer les discussions
+    db.execute(text("DELETE FROM messages WHERE discussion_id IN (SELECT id FROM discussions WHERE doctor_id = CAST(:uid AS uuid) OR radiologist_id = CAST(:uid AS uuid))"), {"uid": uid})
+    db.execute(text("DELETE FROM discussions WHERE doctor_id = CAST(:uid AS uuid) OR radiologist_id = CAST(:uid AS uuid)"), {"uid": uid})
+    # Supprimer les analyses et patients
+    db.execute(text("DELETE FROM findings WHERE analysis_id IN (SELECT id FROM analyses WHERE user_id = CAST(:uid AS uuid))"), {"uid": uid})
+    db.execute(text("DELETE FROM reports WHERE analysis_id IN (SELECT id FROM analyses WHERE user_id = CAST(:uid AS uuid))"), {"uid": uid})
+    db.execute(text("DELETE FROM analyses WHERE user_id = CAST(:uid AS uuid)"), {"uid": uid})
+    db.execute(text("DELETE FROM images WHERE patient_id IN (SELECT id FROM patients WHERE created_by = CAST(:uid AS uuid))"), {"uid": uid})
+    db.execute(text("DELETE FROM patients WHERE created_by = CAST(:uid AS uuid)"), {"uid": uid})
     db.delete(user)
     db.commit()
 
@@ -799,9 +897,30 @@ async def delete_user(
     email = user.email
     first_name = user.first_name
 
-    # Supprimer les logs d'audit liés
+    # Supprimer toutes les dependances en cascade
     from sqlalchemy import text
-    db.execute(text("DELETE FROM audit_logs WHERE user_id = :uid"), {"uid": str(user_uuid)})
+    uid = str(user_uuid)
+    # Mettre a NULL les references optionnelles
+    db.execute(text("UPDATE reports SET generated_by = NULL WHERE generated_by = CAST(:uid AS uuid)"), {"uid": uid})
+    db.execute(text("UPDATE analyses SET validated_by = NULL WHERE validated_by = CAST(:uid AS uuid)"), {"uid": uid})
+    db.execute(text("UPDATE discussions SET reviewed_by = NULL WHERE reviewed_by = CAST(:uid AS uuid)"), {"uid": uid})
+    # Supprimer les enregistrements lies
+    db.execute(text("DELETE FROM messages WHERE sender_id = CAST(:uid AS uuid)"), {"uid": uid})
+    db.execute(text("DELETE FROM notifications WHERE user_id = CAST(:uid AS uuid)"), {"uid": uid})
+    db.execute(text("DELETE FROM subscriptions WHERE user_id = CAST(:uid AS uuid)"), {"uid": uid})
+    db.execute(text("DELETE FROM user_preferences WHERE user_id = CAST(:uid AS uuid)"), {"uid": uid})
+    db.execute(text("DELETE FROM otp_codes WHERE user_id = CAST(:uid AS uuid)"), {"uid": uid})
+    db.execute(text("DELETE FROM ad_views WHERE user_id = CAST(:uid AS uuid)"), {"uid": uid})
+    db.execute(text("DELETE FROM audit_logs WHERE user_id = CAST(:uid AS uuid)"), {"uid": uid})
+    # Supprimer les discussions
+    db.execute(text("DELETE FROM messages WHERE discussion_id IN (SELECT id FROM discussions WHERE doctor_id = CAST(:uid AS uuid) OR radiologist_id = CAST(:uid AS uuid))"), {"uid": uid})
+    db.execute(text("DELETE FROM discussions WHERE doctor_id = CAST(:uid AS uuid) OR radiologist_id = CAST(:uid AS uuid)"), {"uid": uid})
+    # Supprimer les analyses et patients
+    db.execute(text("DELETE FROM findings WHERE analysis_id IN (SELECT id FROM analyses WHERE user_id = CAST(:uid AS uuid))"), {"uid": uid})
+    db.execute(text("DELETE FROM reports WHERE analysis_id IN (SELECT id FROM analyses WHERE user_id = CAST(:uid AS uuid))"), {"uid": uid})
+    db.execute(text("DELETE FROM analyses WHERE user_id = CAST(:uid AS uuid)"), {"uid": uid})
+    db.execute(text("DELETE FROM images WHERE patient_id IN (SELECT id FROM patients WHERE created_by = CAST(:uid AS uuid))"), {"uid": uid})
+    db.execute(text("DELETE FROM patients WHERE created_by = CAST(:uid AS uuid)"), {"uid": uid})
     db.delete(user)
     db.commit()
 

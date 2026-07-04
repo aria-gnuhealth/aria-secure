@@ -23,6 +23,7 @@ class RedisService:
                 host=settings.REDIS_HOST,
                 port=settings.REDIS_PORT,
                 decode_responses=True,
+                password=settings.REDIS_PASSWORD if hasattr(settings, "REDIS_PASSWORD") else None,
                 socket_connect_timeout=5,
                 socket_timeout=5
             )
@@ -217,6 +218,25 @@ class RedisService:
         except Exception as e:
             return {"available": False, "error": str(e)}
 
+
+    def publish(self, channel: str, message: dict) -> bool:
+        if not self.is_available():
+            return False
+        try:
+            self.client.publish(channel, json.dumps(message, default=str))
+            return True
+        except Exception as e:
+            logger.error(f'Erreur Redis publish {channel}: {e}')
+            return False
+
+    def get_pubsub(self):
+        if not self.is_available():
+            return None
+        try:
+            return self.client.pubsub()
+        except Exception as e:
+            logger.error(f'Erreur Redis pubsub: {e}')
+            return None
 
 # Instance globale
 _redis_service = None

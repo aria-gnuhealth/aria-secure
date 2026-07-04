@@ -307,3 +307,95 @@ async def activate_kpay_subscription(
         "message": "Abonnement Premium activé pour 30 jours",
         "end_date": end_date.isoformat()
     }
+
+# ============================================================
+# Admin - Gestion des abonnements
+# ============================================================
+@router.post("/subscription/admin/grant/{user_id}")
+async def admin_grant_subscription(
+    user_id: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Accès réservé aux administrateurs")
+    try:
+        user_uuid = uuid.UUID(user_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="ID invalide")
+    user = db.query(models.User).filter(models.User.id == user_uuid).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
+    from datetime import timezone, timedelta
+    now = datetime.now(timezone.utc)
+    expires_at = now + timedelta(days=30)
+    existing = db.query(models.Subscription).filter(models.Subscription.user_id == user_uuid).first()
+    if existing:
+        existing.status = "active"
+        existing.plan = "premium"
+        existing.start_date = now
+        existing.end_date = expires_at
+        existing.updated_at = now
+    else:
+        sub = models.Subscription(
+            id=uuid.uuid4(),
+            user_id=user_uuid,
+            plan="premium",
+            status="active",
+            start_date=now,
+            end_date=expires_at,
+            created_at=now
+        )
+        db.add(sub)
+    db.commit()
+    try:
+        from app.utils.email import send_email
+        html = (
+            "<html><body>"
+            "<h2>Abonnement Premium active</h2>"
+            "<p>Bonjour " + user.first_name + ",</p>"
+            "<p>Un administrateur vient d activer votre abonnement ARIA Premium pour 30 jours.</p>"
+            "<p>Vous beneficiez desormais d analyses illimitees, de rapports PDF et du chat illimite.</p>"
+            "<p>L equipe ARIA Medical</p>"
+            "</body></html>"
+        )
+        send_email(user.email, "ARIA Medical - Abonnement Premium active", html)
+    except Exception as e:
+        print("Email grant: " + str(e))
+    return {"success": True, "message": f"Abonnement Premium attribue a {user.first_name} {user.last_name} pour 30 jours"}
+
+@router.delete("/subscription/admin/revoke/{user_id}")
+async def admin_revoke_subscription(
+    user_id: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Accès réservé aux administrateurs")
+    try:
+        user_uuid = uuid.UUID(user_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="ID invalide")
+    existing = db.query(models.Subscription).filter(models.Subscription.user_id == user_uuid).first()
+    user = db.query(models.User).filter(models.User.id == user_uuid).first()
+    if existing:
+        existing.status = "expired"
+        existing.plan = "free"
+        db.commit()
+    # Email notification
+    try:
+        from app.utils.email import send_email
+        if user:
+            html = (
+                "<html><body>"
+                "<h2>Abonnement Premium révoqué</h2>"
+                "<p>Bonjour " + user.first_name + ",</p>"
+                "<p>Votre abonnement <strong>ARIA Premium</strong> a été révoqué par un administrateur.</p>"
+                "<p>Pour continuer à bénéficier des fonctionnalités Premium, vous pouvez vous réabonner depuis l application.</p>"
+                "<p>L equipe ARIA Medical</p>"
+                "</body></html>"
+            )
+            send_email(user.email, "ARIA Medical - Abonnement Premium révoqué", html)
+    except Exception as e:
+        print("Email revoke subscription: " + str(e))
+    return {"success": True, "message": "Abonnement supprimé"}

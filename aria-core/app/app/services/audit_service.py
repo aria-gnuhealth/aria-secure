@@ -75,6 +75,21 @@ class AuditService:
         logger.info(f"📝 AUDIT: {action} - User: {user_id} - Resource: {resource_type}/{resource_id}")
         return audit_log
 
+        # Notifier les admins en temps reel
+        try:
+            import asyncio
+            from app.api.v1.chat import manager as ws_manager
+            admins = db.query(models.User).filter(models.User.role == "admin", models.User.is_active == True).all()
+            for admin in admins:
+                asyncio.create_task(ws_manager.send_message(str(admin.id), {
+                    "type": "new_audit_log",
+                    "action": action,
+                    "resource_type": resource_type,
+                    "user_id": str(user_id)
+                }))
+        except Exception as e:
+            pass
+
 
 # Instance globale
 _audit_service = None

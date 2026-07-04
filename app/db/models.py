@@ -252,6 +252,8 @@ class Discussion(Base):
     analysis_id = Column(UUID(as_uuid=True), ForeignKey("analyses.id"), nullable=False, index=True)
     doctor_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     radiologist_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    hidden_by_doctor = Column(Boolean, default=False)
+    hidden_by_radiologist = Column(Boolean, default=False)
     
     status = Column(String(50), default="open")  # open, pending_review, reviewed, closed
     reviewed_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)

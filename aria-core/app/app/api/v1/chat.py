@@ -235,6 +235,12 @@ async def get_discussions(
         )
     )
     
+    # Exclure les discussions masquees par l utilisateur courant
+    if current_user.role == "doctor":
+        query = query.filter(models.Discussion.hidden_by_doctor != True)
+    elif current_user.role == "radiologist":
+        query = query.filter(models.Discussion.hidden_by_radiologist != True)
+    
     if status:
         query = query.filter(models.Discussion.status == status)
     
@@ -541,14 +547,28 @@ async def send_message(
     db.commit()
     
     # Envoyer notification WebSocket
-    await manager.send_message(str(recipient_id), {
+    ws_payload = {
         "type": "new_message",
+        "id": str(message.id),
         "discussion_id": str(discussion.id),
         "sender_id": str(current_user.id),
         "sender_name": f"{current_user.first_name} {current_user.last_name}",
-        "content": data.content[:50],
+        "sender_role": current_user.role,
+        "content": data.content,
+        "message_type": "text",
+        "read_at": None,
+        "created_at": message.created_at.isoformat() if message.created_at else None,
+        "recipient_id": str(recipient_id),
         "message_id": str(message.id)
-    })
+    }
+    await manager.send_message(str(recipient_id), ws_payload)
+    # Publier sur Redis pour notifier l autre backend
+    try:
+        import redis as _redis, json as _json
+        r = _redis.Redis(host="127.0.0.1", port=6379, password="AriaRedis2026Secure2026", decode_responses=True, protocol=2)
+        r.publish("aria:events", _json.dumps(ws_payload, default=str))
+    except Exception as e:
+        print("Redis chat publish: " + str(e))
     
     return MessageResponse.model_validate(message)
 
@@ -767,3 +787,53 @@ async def send_message_with_attachment(
         "read_at": new_message.read_at.isoformat() if new_message.read_at else None,
         "created_at": new_message.created_at.isoformat() if new_message.created_at else None
     }
+# ============================================================
+# Supprimer un message
+# ============================================================
+@router.delete("/chat/messages/{message_id}")
+async def delete_message(
+    message_id: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    try:
+        msg_uuid = uuid.UUID(message_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="ID invalide")
+    
+    msg = db.query(models.Message).filter(models.Message.id == msg_uuid).first()
+    if not msg:
+        raise HTTPException(status_code=404, detail="Message non trouvé")
+    if str(msg.sender_id) != str(current_user.id) and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Vous ne pouvez supprimer que vos propres messages")
+    
+    db.delete(msg)
+    db.commit()
+    return {"success": True, "message": "Message supprimé"}
+
+# ============================================================
+# Masquer une discussion (soft delete par utilisateur)
+# ============================================================
+@router.post("/chat/discussions/{discussion_id}/hide")
+async def hide_discussion(
+    discussion_id: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    try:
+        disc_uuid = uuid.UUID(discussion_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="ID invalide")
+    
+    disc = db.query(models.Discussion).filter(models.Discussion.id == disc_uuid).first()
+    if not disc:
+        raise HTTPException(status_code=404, detail="Discussion non trouvée")
+    
+    # Masquer uniquement pour l utilisateur courant
+    if str(current_user.id) == str(disc.doctor_id):
+        disc.hidden_by_doctor = True
+    elif str(current_user.id) == str(disc.radiologist_id):
+        disc.hidden_by_radiologist = True
+    
+    db.commit()
+    return {"success": True, "message": "Discussion masquée"}

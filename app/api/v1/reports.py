@@ -159,7 +159,8 @@ async def generate_analysis_report(
             results=chexpert_results,
             findings=findings,
             image_url=image_url,
-            validator_info=validator_info
+            validator_name=validator_info['name'] if validator_info else None,
+            validated_at=validator_info['validated_at'] if validator_info else None
         )
     else:
         mura_result = {
@@ -174,7 +175,8 @@ async def generate_analysis_report(
             patient_info=patient_info,
             result=mura_result,
             image_url=image_url,
-            validator_info=validator_info
+            validator_name=validator_info['name'] if validator_info else None,
+            validated_at=validator_info['validated_at'] if validator_info else None
         )
 
     if not pdf_bytes:

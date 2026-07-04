@@ -536,3 +536,83 @@ async def get_doctor_overview(
         "alerts": alerts,
         "timeline": timeline
     }
+# ============================================================
+# Dashboard Admin - Statistiques globales
+# ============================================================
+@router.get("/dashboard/admin/stats")
+async def get_admin_stats(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Accès réservé aux administrateurs")
+
+    from app.api.v1.chat import manager as ws_manager
+
+    # Total utilisateurs
+    total_users = db.query(models.User).filter(models.User.is_active == True).count()
+
+    # Total radiologues
+    total_radiologists = db.query(models.User).filter(
+        models.User.role == "radiologist",
+        models.User.is_active == True
+    ).count()
+
+    # Utilisateurs actifs dans les 15 dernieres minutes (toutes plateformes)
+    from datetime import timezone
+    fifteen_min_ago = datetime.utcnow() - timedelta(minutes=5)
+    online_users = db.query(models.User).filter(
+        models.User.role == "doctor",
+        models.User.is_active == True,
+        models.User.last_login >= fifteen_min_ago
+    ).count()
+    online_radiologists = db.query(models.User).filter(
+        models.User.role == "radiologist",
+        models.User.is_active == True,
+        models.User.last_login >= fifteen_min_ago
+    ).count()
+
+    # Total patients
+    total_patients = db.query(models.Patient).count()
+
+    # Total analyses
+    total_analyses = db.query(models.Analysis).count()
+
+    # Analyses critiques
+    critical_analyses = db.query(models.Analysis).filter(
+        models.Analysis.urgency_level == "CRITIQUE"
+    ).count()
+
+    # Analyses en attente
+    pending_analyses = db.query(models.Analysis).filter(
+        models.Analysis.status == models.AnalysisStatus.PENDING
+    ).count()
+
+    return {
+        "success": True,
+        "total_users": total_users,
+        "total_radiologists": total_radiologists,
+        "online_users": online_users,
+        "online_radiologists": online_radiologists,
+        "total_patients": total_patients,
+        "total_analyses": total_analyses,
+        "critical_analyses": critical_analyses,
+        "pending_analyses": pending_analyses,
+    }
+
+# ============================================================
+# Utilisateurs actuellement connectes au WebSocket
+# ============================================================
+@router.get("/dashboard/online-users")
+async def get_online_users(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    try:
+        from app.services.redis_service import get_redis_service
+        rs = get_redis_service()
+        online_ids = list(rs.client.smembers("aria:online_users")) if rs.is_available() else []
+    except:
+        from app.api.v1.chat import manager as ws_manager
+        online_ids = list(ws_manager.user_connections.keys())
+    return {"online_user_ids": list(online_ids)}
