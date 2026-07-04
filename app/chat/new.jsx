@@ -128,7 +128,7 @@ export default function NewDiscussionScreen() {
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <StatusBar backgroundColor={colors.primaryDark} barStyle="light-content" />
       <View style={[styles.container, { backgroundColor: theme?.bg }]}>
@@ -140,7 +140,7 @@ export default function NewDiscussionScreen() {
           <Text style={styles.headerSub}>Soumettre une analyse à un radiologue</Text>
         </View>
 
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
 
           {/* Choisir le radiologue */}
           <View style={styles.section}>

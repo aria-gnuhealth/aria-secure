@@ -1,3 +1,4 @@
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useState, useEffect, useCallback } from "react";
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
@@ -28,6 +29,7 @@ export default function AdminModelsScreen() {
   const border = darkMode ? theme.border : colors.border;
 
   const [models, setModels] = useState([]);
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
@@ -251,12 +253,12 @@ export default function AdminModelsScreen() {
       )}
 
       <Modal visible={showForm} transparent animationType="slide" onRequestClose={() => setShowForm(false)}>
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}>
           <View style={styles.modalBg}>
             <View style={[styles.modal, { backgroundColor: surface }]}>
               <View style={styles.modalHandle} />
               <Text style={[styles.modalTitle, { color: textPrimary }]}>➕ Nouveau Modèle IA</Text>
-              <ScrollView showsVerticalScrollIndicator={false}>
+              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
                 {[
                   { label: "Nom *", key: "name", placeholder: "ex: CheXpert" },
                   { label: "Version", key: "version", placeholder: "ex: 1.0.0" },

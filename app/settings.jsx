@@ -100,7 +100,7 @@ export default function SettingsScreen() {
   if (section === "profile") return (
     <KeyboardAvoidingView
       style={[styles.container, { backgroundColor: bg }]}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <StatusBar backgroundColor={palette.navy} barStyle="light-content" />
       <View style={styles.header}>
@@ -109,7 +109,7 @@ export default function SettingsScreen() {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Modifier le profil</Text>
       </View>
-      <ScrollView contentContainerStyle={styles.formBody}>
+      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.formBody}>
         <View style={[styles.formCard, { backgroundColor: surface }]}>
           {[
             { key: "firstName", label: "Prénom", placeholder: "Votre prénom", icon: "👤" },
@@ -151,7 +151,7 @@ export default function SettingsScreen() {
   if (section === "password") return (
     <KeyboardAvoidingView
       style={[styles.container, { backgroundColor: bg }]}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <StatusBar backgroundColor={palette.navy} barStyle="light-content" />
       <View style={styles.header}>
@@ -160,7 +160,7 @@ export default function SettingsScreen() {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Modifier le mot de passe</Text>
       </View>
-      <ScrollView contentContainerStyle={styles.formBody}>
+      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.formBody}>
         <View style={[styles.formCard, { backgroundColor: surface }]}>
           <View style={styles.pwdInfo}>
             <Text style={styles.pwdInfoIcon}>🔒</Text>
@@ -219,7 +219,7 @@ export default function SettingsScreen() {
         <Text style={styles.headerTitle}>Paramètres</Text>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 60 }}>
+      <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 60 }}>
 
         {/* Apparence */}
         <SectionLabel label="APPARENCE" />

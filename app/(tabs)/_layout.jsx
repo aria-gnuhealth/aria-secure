@@ -1,5 +1,6 @@
 import { Tabs } from "expo-router";
-import { Text, View, StyleSheet } from "react-native";
+import { Text, View, StyleSheet, Platform } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "../../contexts/AuthContext";
 import { useNotifications } from "../../contexts/NotificationContext";
 import { useSettings } from "../../contexts/SettingsContext";
@@ -27,6 +28,7 @@ export default function TabsLayout() {
   const { unreadMessages } = useNotifications();
   const { theme, darkMode } = useSettings();
   const role = user?.role;
+  const insets = useSafeAreaInsets();
 
   const tabBarOptions = {
     headerShown: false,
@@ -36,8 +38,8 @@ export default function TabsLayout() {
       backgroundColor: darkMode ? "#1e293b" : "#fff",
       borderTopWidth: 0.5,
       borderTopColor: darkMode ? "#334155" : "#e0e0e0",
-      height: 64,
-      paddingBottom: 8,
+      height: 56 + insets.bottom,
+      paddingBottom: insets.bottom > 0 ? insets.bottom : 8,
       paddingTop: 4,
     },
     tabBarLabelStyle: {

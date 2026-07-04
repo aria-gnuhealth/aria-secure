@@ -26,6 +26,7 @@ export default function ChatScreen() {
   const [sending, setSending] = useState(false);
   const [analysis, setAnalysis] = useState(null);
   const [imageUrl, setImageUrl] = useState(null);
+  const [heatmapUrl, setHeatmapUrl] = useState(null);
   const [findings, setFindings] = useState([]);
   const [validating, setValidating] = useState(false);
   const [validated, setValidated] = useState(false);
@@ -39,8 +40,21 @@ export default function ChatScreen() {
 
   // WebSocket temps réel
   const handleWsMessage = useCallback((data) => {
-    if (data.type === "new_message" && data.discussion_id === id) {
-      fetchMessages();
+    console.log("WS reçu:", JSON.stringify(data));
+    if (data.type === "new_message") {
+      console.log("discussion_id reçu:", data.discussion_id, "id actuel:", id);
+      if (data.discussion_id === id || data.discussion_id === String(id)) {
+        if (data.id && data.content !== undefined) {
+          setMessages(prev => {
+            const exists = prev.find(m => m.id === data.id);
+            if (exists) return prev;
+            return [...prev, data];
+          });
+          setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+        } else {
+          fetchMessages();
+        }
+      }
     }
   }, [id]);
   useWebSocket(handleWsMessage);
@@ -96,6 +110,10 @@ export default function ChatScreen() {
       setAnalysis(analysisData);
       setFindings(res.data?.findings || []);
       setValidated(!!res.data?.validated_at);
+      // Charger la heatmap en priorité
+      if (res.data?.heatmap_url) {
+        setHeatmapUrl(res.data.heatmap_url);
+      }
       if (res.data?.image_id) {
         try {
           const urlRes = await api.get(`/images/${res.data.image_id}/url`);
@@ -222,6 +240,28 @@ export default function ChatScreen() {
     "NORMAL":   { color: colors.success, bg: colors.successBg, label: "🟢 NORMAL" },
   })[level] || { color: colors.info, bg: colors.infoBg, label: level || "NORMAL" };
 
+  const deleteMessage = (msgId) => {
+    Alert.alert(
+      "🗑️ Supprimer le message",
+      "Voulez-vous supprimer ce message ?",
+      [
+        { text: "Annuler", style: "cancel" },
+        {
+          text: "Supprimer",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await api.delete(`/chat/messages/${msgId}`);
+              setMessages(prev => prev.filter(m => m.id !== msgId));
+            } catch (e) {
+              Alert.alert("Erreur", "Impossible de supprimer ce message");
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const renderMessage = ({ item, index }) => {
     const isMine = item.sender_id === user?.id;
     const prevMsg = messages[index - 1];
@@ -251,7 +291,12 @@ export default function ChatScreen() {
           )}
 
           {/* Bulle */}
-          <View style={[styles.bubble, isMine ? styles.bubbleMine : styles.bubbleOther]}>
+          <TouchableOpacity
+            style={[styles.bubble, isMine ? styles.bubbleMine : styles.bubbleOther]}
+            onLongPress={() => isMine && deleteMessage(item.id)}
+            activeOpacity={1}
+            delayLongPress={500}
+          >
             {/* Nom expéditeur (si pas moi) */}
             {!isMine && item.sender_name && (
               <Text style={styles.senderName}>{item.sender_name}</Text>
@@ -268,7 +313,7 @@ export default function ChatScreen() {
               </Text>
               <ReadTicks isMine={isMine} isRead={isRead} />
             </View>
-          </View>
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -286,7 +331,7 @@ export default function ChatScreen() {
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={0}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 25}
     >
       <StatusBar backgroundColor={palette.navy} barStyle="light-content" />
 
@@ -328,35 +373,15 @@ export default function ChatScreen() {
             </View>
           </View>
 
-          {imageUrl && (
+
+          {(heatmapUrl || imageUrl) && (
             <TouchableOpacity onPress={() => setShowImageModal(true)} activeOpacity={0.9} style={styles.imageWrap}>
-              <Image source={{ uri: imageUrl }} style={styles.analysisImg} resizeMode="cover" />
-
-              {/* Annotations overlay */}
-              {findings.length > 0 && (
-                <View style={styles.annotationsOverlay}>
-                  {findings.slice(0, 3).map((f, i) => (
-                    <View key={i} style={[styles.annotationPin, {
-                      top: `${20 + i * 25}%`,
-                      left: `${20 + i * 20}%`,
-                    }]}>
-                      <View style={[styles.annotationDot, {
-                        backgroundColor: f.severity === "high" ? colors.danger : f.severity === "medium" ? colors.warning : colors.success
-                      }]} />
-                      <View style={styles.annotationLabel}>
-                        <Text style={styles.annotationText} numberOfLines={1}>{f.label || `Zone ${i + 1}`}</Text>
-                      </View>
-                    </View>
-                  ))}
-                </View>
-              )}
-
-              <View style={styles.zoomHint}>
-                <Text style={styles.zoomHintText}>🔍 Agrandir</Text>
+              <Image source={{ uri: heatmapUrl || imageUrl }} style={styles.analysisImg} resizeMode="contain" />
+              <View style={[styles.zoomHint, heatmapUrl ? { backgroundColor: "rgba(31,107,158,0.85)" } : {}]}>
+                <Text style={styles.zoomHintText}>{heatmapUrl ? "🔥 Heatmap Grad-CAM · 🔍 Agrandir" : "🔍 Agrandir"}</Text>
               </View>
             </TouchableOpacity>
           )}
-
           {/* Stats analyse */}
           <View style={styles.analysisStats}>
             <View style={styles.analysisStat}>
@@ -379,7 +404,7 @@ export default function ChatScreen() {
 
           {/* Findings liste */}
           {findings.length > 0 && (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.findingsRow}>
+            <ScrollView keyboardShouldPersistTaps="handled" horizontal showsHorizontalScrollIndicator={false} style={styles.findingsRow}>
               {findings.map((f, i) => (
                 <View key={i} style={[styles.findingChip, {
                   backgroundColor: f.severity === "high" ? colors.dangerBg : f.severity === "medium" ? colors.warningBg : colors.successBg
@@ -581,28 +606,13 @@ export default function ChatScreen() {
                 </TouchableOpacity>
 
                 <View style={styles.modalImgWrap}>
-                  {imageUrl && (
+                  {(heatmapUrl || imageUrl) && (
                     <Image
-                      source={{ uri: imageUrl }}
+                      source={{ uri: heatmapUrl || imageUrl }}
                       style={styles.modalImg}
                       resizeMode="contain"
                     />
                   )}
-                  {/* Annotations en modal */}
-                  {findings.map((f, i) => (
-                    <View key={i} style={[styles.modalAnnotation, {
-                      top: `${15 + i * 20}%`,
-                      left: `${15 + i * 18}%`,
-                    }]}>
-                      <View style={[styles.modalAnnotDot, {
-                        backgroundColor: f.severity === "high" ? colors.danger : f.severity === "medium" ? colors.warning : colors.success
-                      }]} />
-                      <View style={styles.modalAnnotLabel}>
-                        <Text style={styles.modalAnnotText}>{f.label || `Zone ${i + 1}`}</Text>
-                        {f.confidence && <Text style={styles.modalAnnotConf}>{(f.confidence * 100).toFixed(0)}%</Text>}
-                      </View>
-                    </View>
-                  ))}
                 </View>
 
                 {/* Info footer modal */}

@@ -1,3 +1,4 @@
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useState, useEffect, useCallback } from "react";
 import { useWebSocket } from "../../hooks/useWebSocket";
 import {
@@ -265,12 +266,23 @@ function AdminDashboard({ user, stats, loading, refreshing, onRefresh, router })
           {loading ? (
             <View style={styles.loadingBox}><ActivityIndicator color={palette.amber} size="large" /></View>
           ) : (
-            <View style={styles.statsGrid}>
-              <StatCard icon="👥" value={stats?.total_patients ?? "0"} label="Patients total" color={palette.amber} bg={palette.amberLight} />
-              <StatCard icon="🔬" value={stats?.total_analyses ?? "0"} label="Analyses total" color={palette.violet} bg={palette.violetLight} />
-              <StatCard icon="🚨" value={stats?.critical_analyses ?? "0"} label="Cas critiques" color={colors.danger} bg={colors.dangerBg} />
-              <StatCard icon="⏳" value={stats?.pending_analyses ?? "0"} label="En attente" color={colors.info} bg={colors.infoBg} />
-            </View>
+            <>
+              <View style={styles.statsGrid}>
+                <StatCard icon="👤" value={stats?.total_users ?? "0"} label="Utilisateurs total" color={palette.amber} bg={palette.amberLight} />
+                <StatCard icon="🔬" value={stats?.total_radiologists ?? "0"} label="Radiologues total" color={palette.violet} bg={palette.violetLight} />
+              </View>
+              <View style={[styles.onlineSection]}>
+                <Text style={styles.onlineTitle}>🟢 En ligne actuellement</Text>
+                <View style={styles.statsGrid}>
+                  <StatCard icon="🟢" value={stats?.online_users ?? "0"} label="Utilisateurs en ligne" color={colors.success} bg={colors.successBg} />
+                  <StatCard icon="🟢" value={stats?.online_radiologists ?? "0"} label="Radiologues en ligne" color={colors.primary} bg={colors.primaryBg} />
+                </View>
+              </View>
+              <View style={styles.statsGrid}>
+                <StatCard icon="👥" value={stats?.total_patients ?? "0"} label="Patients total" color={palette.amber} bg={palette.amberLight} />
+                <StatCard icon="🚨" value={stats?.critical_analyses ?? "0"} label="Cas critiques" color={colors.danger} bg={colors.dangerBg} />
+              </View>
+            </>
           )}
 
           <SectionTitle title="GESTION" />
@@ -302,6 +314,7 @@ export default function DashboardScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const [stats, setStats] = useState(null);
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -312,7 +325,8 @@ export default function DashboardScreen() {
     if ([
       "new_message", "review_completed", "new_discussion",
       "role_changed", "status_changed", "account_deleted",
-      "analysis_validated", "analysis_rejected"
+      "analysis_validated", "analysis_rejected",
+      "user_connected"
     ].includes(data.type)) {
       fetchStats();
     }
@@ -321,7 +335,10 @@ export default function DashboardScreen() {
 
   const fetchStats = async () => {
     try {
-      const res = await api.get("/patients/stats/summary");
+      const endpoint = user?.role === "admin"
+        ? "/dashboard/admin/stats"
+        : "/patients/stats/summary";
+      const res = await api.get(endpoint);
       setStats(res.data);
     } catch (e) {} finally {
       setLoading(false);
@@ -427,6 +444,22 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 13, color: colors.textMuted, marginTop: 4 },
 
   // Admin
+  onlineSection: {
+    marginTop: 8,
+    marginBottom: 4,
+    backgroundColor: "rgba(16,185,129,0.06)",
+    borderRadius: 12,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: "rgba(16,185,129,0.2)",
+  },
+  onlineTitle: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#10b981",
+    marginBottom: 8,
+    marginLeft: 4,
+  },
   adminRow: {
     flexDirection: "row", alignItems: "center", gap: 14,
     backgroundColor: colors.surface, borderRadius: radius.xl,

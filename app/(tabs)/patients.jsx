@@ -1,3 +1,4 @@
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useState, useEffect } from "react";
 import { Swipeable } from "react-native-gesture-handler";
 import {
@@ -24,6 +25,7 @@ export default function PatientsScreen() {
   const { user } = useAuth();
   const { theme, t } = useSettings();
   const [patients, setPatients] = useState([]);
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");

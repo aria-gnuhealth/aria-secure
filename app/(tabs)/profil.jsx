@@ -2,6 +2,7 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Alert, StatusBar, Linking
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useState, useEffect, useCallback } from "react";
 import { useFocusEffect } from "expo-router";
 import { useRouter } from "expo-router";
@@ -63,7 +64,7 @@ export default function ProfilScreen() {
     <View style={[styles.container, { backgroundColor: bg }]}>
       <StatusBar backgroundColor={palette.navy} barStyle="light-content" />
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
         {/* Header */}
         <View style={styles.header}>

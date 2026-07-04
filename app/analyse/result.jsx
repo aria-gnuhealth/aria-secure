@@ -68,7 +68,7 @@ export default function AnalyseResult() {
 
   // Affichage des données brutes (pour debug)
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView keyboardShouldPersistTaps="handled" style={styles.container}>
       <Text style={styles.title}>📦 Données reçues</Text>
       <Text style={styles.json}>{JSON.stringify(analyse, null, 2)}</Text>
     </ScrollView>

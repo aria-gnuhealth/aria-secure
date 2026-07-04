@@ -47,7 +47,7 @@ export default function ResetPasswordScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <Text style={styles.title}>Nouveau mot de passe</Text>
       <Text style={styles.subtitle}>

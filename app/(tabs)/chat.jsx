@@ -1,7 +1,8 @@
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useState, useEffect } from "react";
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  ActivityIndicator, RefreshControl, StatusBar
+  ActivityIndicator, RefreshControl, StatusBar, Alert
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "../../contexts/AuthContext";
@@ -14,6 +15,7 @@ export default function ChatTabScreen() {
   const { user } = useAuth();
   const { theme, baseFontSize } = useSettings();
   const [discussions, setDiscussions] = useState([]);
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -71,10 +73,34 @@ export default function ChatTabScreen() {
     return d.toLocaleDateString("fr-FR");
   };
 
+  const hideDiscussion = (item) => {
+    Alert.alert(
+      "🗑️ Supprimer la conversation",
+      "Voulez-vous masquer cette conversation ? Elle restera visible pour l autre participant.",
+      [
+        { text: "Annuler", style: "cancel" },
+        {
+          text: "Supprimer",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await api.post(`/chat/discussions/${item.id}/hide`);
+              setDiscussions(prev => prev.filter(d => d.id !== item.id));
+            } catch (e) {
+              Alert.alert("Erreur", "Impossible de masquer cette conversation");
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const renderDiscussion = ({ item }) => (
     <TouchableOpacity
       style={[styles.card, { backgroundColor: theme.surface }]}
       onPress={() => router.push(`/chat/${item.id}`)}
+      onLongPress={() => hideDiscussion(item)}
+      delayLongPress={600}
       activeOpacity={0.7}
     >
       <View style={styles.cardLeft}>

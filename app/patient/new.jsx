@@ -111,7 +111,7 @@ export default function NewPatient() {
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}>
       <StatusBar backgroundColor={palette.navy} barStyle="light-content" />
       <View style={[styles.container, { backgroundColor: bg }]}>
         <View style={styles.header}>
@@ -122,7 +122,7 @@ export default function NewPatient() {
           <Text style={styles.headerSub}>Créer un dossier médical</Text>
         </View>
 
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View style={[styles.section, { backgroundColor: surface }]}>
             <Text style={[styles.sectionTitle, { color: mutedColor }]}>INFORMATIONS OBLIGATOIRES</Text>
 

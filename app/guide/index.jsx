@@ -193,7 +193,7 @@ export default function GuideScreen() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={[styles.introCard, { backgroundColor: surface }]}>
           <Text style={[styles.introText, { color: textPrimary }]}>{intro}</Text>
         </View>

@@ -106,7 +106,7 @@ export default function PaymentScreen() {
         <Text style={styles.headerTitle}>👑 Premium ARIA</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
 
         {/* Hero card */}
         <View style={styles.heroCard}>

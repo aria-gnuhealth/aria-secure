@@ -1,4 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { Animated } from "react-native";
 import { useWebSocket } from "../../hooks/useWebSocket";
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
@@ -12,16 +14,55 @@ import { useSettings } from "../../contexts/SettingsContext";
 
 const TABS = ["Utilisateurs", "Logs", "Créer"];
 
+function OnlinePulse() {
+  const pulse = useRef(new Animated.Value(1)).current;
+  const opacity = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.parallel([
+        Animated.sequence([
+          Animated.timing(pulse, { toValue: 1.8, duration: 800, useNativeDriver: true }),
+          Animated.timing(pulse, { toValue: 1, duration: 800, useNativeDriver: true }),
+        ]),
+        Animated.sequence([
+          Animated.timing(opacity, { toValue: 0.2, duration: 800, useNativeDriver: true }),
+          Animated.timing(opacity, { toValue: 1, duration: 800, useNativeDriver: true }),
+        ]),
+      ])
+    ).start();
+  }, []);
+
+  return (
+    <View style={{ position: "absolute", bottom: 0, right: 0, width: 14, height: 14, alignItems: "center", justifyContent: "center" }}>
+      <Animated.View style={{
+        position: "absolute",
+        width: 14, height: 14, borderRadius: 7,
+        backgroundColor: "#10B981",
+        opacity: opacity,
+        transform: [{ scale: pulse }],
+      }} />
+      <View style={{
+        width: 10, height: 10, borderRadius: 5,
+        backgroundColor: "#10B981",
+        borderWidth: 2, borderColor: "#fff",
+      }} />
+    </View>
+  );
+}
+
 export default function AdminUsersTab() {
   const { user } = useAuth();
   const { theme, baseFontSize, t } = useSettings();
   const [activeTab, setActiveTab] = useState("Utilisateurs");
   const [users, setUsers] = useState([]);
   const [logs, setLogs] = useState([]);
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [logsLoading, setLogsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
+  const [onlineUserIds, setOnlineUserIds] = useState([]);
 
   // Formulaire création
   const [form, setForm] = useState({
@@ -32,17 +73,28 @@ export default function AdminUsersTab() {
 
   useEffect(() => {
     fetchUsers();
-    fetchLogs();
+    fetchLogs(true);
     // WebSocket rafraichit les logs en temps reel
   }, []);
 
   // WebSocket temps reel
   const handleWsMessage = useCallback((data) => {
-    fetchLogs();
+    if ([
+      "new_audit_log", "user_created", "role_changed", "status_changed",
+      "account_deleted", "user_connected", "user_disconnected", "analysis_validated", "analysis_rejected"
+    ].includes(data.type)) {
+      fetchLogs(false);
+    }
     if ([
       "user_created", "role_changed", "status_changed", "account_deleted"
     ].includes(data.type)) {
       fetchUsers();
+    }
+    if (data.type === "user_connected" && data.user_id) {
+      setOnlineUserIds(prev => prev.includes(data.user_id) ? prev : [...prev, data.user_id]);
+    }
+    if (data.type === "user_disconnected" && data.user_id) {
+      setOnlineUserIds(prev => prev.filter(id => id !== data.user_id));
     }
   }, []);
   useWebSocket(handleWsMessage);
@@ -51,6 +103,11 @@ export default function AdminUsersTab() {
     try {
       const res = await api.get("/auth/users");
       setUsers(res.data || []);
+      // Récupérer les IDs des users en ligne depuis Redis
+      try {
+        const onlineRes = await api.get("/dashboard/online-users");
+        setOnlineUserIds(onlineRes.data?.online_user_ids || []);
+      } catch (e) {}
     } catch (e) {
       console.log("Erreur users:", e.message);
     } finally {
@@ -59,15 +116,15 @@ export default function AdminUsersTab() {
     }
   };
 
-  const fetchLogs = async () => {
-    setLogsLoading(true);
+  const fetchLogs = async (showLoader = false) => {
+    if (showLoader) setLogsLoading(true);
     try {
       const res = await api.get("/audit/audit/logs?limit=100&per_page=100");
       setLogs(res.data?.logs || res.data?.items || []);
     } catch (e) {
       console.log("Erreur logs:", e.response?.status, e.message);
     } finally {
-      setLogsLoading(false);
+      if (showLoader) setLogsLoading(false);
     }
   };
 
@@ -145,6 +202,51 @@ Cette action est irréversible et l'utilisateur sera notifié par email.`,
     );
   };
 
+  const grantSubscription = (userId, userName) => {
+    Alert.alert(
+      "💳 Attribuer Premium",
+      `Attribuer 30 jours de Premium à ${userName} ?`,
+      [
+        { text: "Annuler", style: "cancel" },
+        {
+          text: "Attribuer",
+          onPress: async () => {
+            try {
+              await api.post(`/subscription/admin/grant/${userId}`);
+              Alert.alert("✅ Succès", `Abonnement Premium attribué à ${userName}`);
+              fetchUsers();
+            } catch (e) {
+              Alert.alert("Erreur", e.response?.data?.detail || "Impossible d'attribuer");
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const revokeSubscription = (userId, userName) => {
+    Alert.alert(
+      "🚫 Supprimer abonnement",
+      `Supprimer l'abonnement de ${userName} ?`,
+      [
+        { text: "Annuler", style: "cancel" },
+        {
+          text: "Supprimer",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await api.delete(`/subscription/admin/revoke/${userId}`);
+              Alert.alert("✅ Succès", `Abonnement supprimé pour ${userName}`);
+              fetchUsers();
+            } catch (e) {
+              Alert.alert("Erreur", e.response?.data?.detail || "Impossible de supprimer");
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const handleCreate = async () => {
     if (!form.first_name || !form.last_name || !form.email || !form.password) {
       Alert.alert("Erreur", "Tous les champs sont obligatoires");
@@ -210,15 +312,34 @@ Cette action est irréversible et l'utilisateur sera notifié par email.`,
     return (
       <View style={[styles.card, !item.is_active && { opacity: 0.5 }]}>
         <View style={styles.cardRow}>
-          <View style={[styles.avatar, { backgroundColor: roleColor + "20" }]}>
-            <Text style={[styles.avatarText, { color: roleColor }]}>
-              {getInitials(item.first_name, item.last_name)}
-            </Text>
+          <View style={{ position: "relative" }}>
+            <View style={[styles.avatar, { backgroundColor: roleColor + "20" }]}>
+              <Text style={[styles.avatarText, { color: roleColor }]}>
+                {getInitials(item.first_name, item.last_name)}
+              </Text>
+            </View>
+            {onlineUserIds.includes(item.id) && (
+              <OnlinePulse />
+            )}
           </View>
           <View style={styles.cardInfo}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
               <Text style={styles.cardName}>{item.first_name} {item.last_name}</Text>
               {isMe && <Text style={{ fontSize: 10, color: colors.textMuted }}>(vous)</Text>}
+              {item.is_premium && (
+                <View style={styles.premiumBadge}>
+                  <Text style={styles.premiumBadgeText}>💎 Premium</Text>
+                </View>
+              )}
+              {item.is_email_verified ? (
+                <View style={styles.verifiedBadge}>
+                  <Text style={styles.verifiedBadgeText}>✓ Vérifié</Text>
+                </View>
+              ) : (
+                <View style={styles.unverifiedBadge}>
+                  <Text style={styles.unverifiedBadgeText}>✗ Non vérifié</Text>
+                </View>
+              )}
               {!item.is_active && (
                 <View style={styles.inactiveDot}>
                   <Text style={styles.inactiveDotText}>Inactif</Text>
@@ -232,6 +353,7 @@ Cette action est irréversible et l'utilisateur sera notifié par email.`,
           </View>
         </View>
         {!isMe && (
+          <>
           <View style={styles.actions}>
             <TouchableOpacity
               style={styles.actionBtn}
@@ -254,6 +376,39 @@ Cette action est irréversible et l'utilisateur sera notifié par email.`,
               <Text style={[styles.actionText, { color: "#DC2626" }]}>🗑️ Supprimer</Text>
             </TouchableOpacity>
           </View>
+          {!isMe && !item.is_email_verified && (
+            <TouchableOpacity
+              style={[styles.actionBtn, styles.verifyBtn, { marginTop: 6 }]}
+              onPress={async () => {
+                try {
+                  await api.put(`/auth/users/${item.id}/verify`);
+                  Alert.alert("✅ Vérifié", `Compte de ${item.first_name} vérifié et notifié par email.`);
+                  fetchUsers();
+                } catch (e) {
+                  Alert.alert("Erreur", e.response?.data?.detail || "Impossible de vérifier");
+                }
+              }}
+            >
+              <Text style={[styles.actionText, { color: "#065F46" }]}>✓ Vérifier le compte</Text>
+            </TouchableOpacity>
+          )}
+          {item.role !== "admin" && (
+            <View style={[styles.actions, { marginTop: 6 }]}>
+              <TouchableOpacity
+                style={[styles.actionBtn, styles.premiumBtn]}
+                onPress={() => grantSubscription(item.id, `${item.first_name} ${item.last_name}`)}
+              >
+                <Text style={[styles.actionText, { color: "#B45309" }]}>💳 Premium</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.actionBtn, styles.revokeBtn]}
+                onPress={() => revokeSubscription(item.id, `${item.first_name} ${item.last_name}`)}
+              >
+                <Text style={[styles.actionText, { color: "#6B7280" }]}>🚫 Révoquer</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </>
         )}
       </View>
     );
@@ -362,8 +517,8 @@ Cette action est irréversible et l'utilisateur sera notifié par email.`,
             <Text style={styles.logsHeaderText}>
               📋 {logs.length} action(s) enregistrée(s)
             </Text>
-            <TouchableOpacity onPress={fetchLogs} style={styles.refreshBtn}>
-              <Text style={styles.refreshBtnText}>🔄 Actualiser</Text>
+            <TouchableOpacity onPress={() => fetchLogs(false)} style={styles.refreshBtn}>
+              <Text style={styles.refreshBtnText}>🔄 Temps réel</Text>
             </TouchableOpacity>
           </View>
           {logsLoading ? (
@@ -400,9 +555,9 @@ Cette action est irréversible et l'utilisateur sera notifié par email.`,
       {activeTab === "Créer" && (
         <KeyboardAvoidingView
           style={{ flex: 1 }}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
         >
-          <ScrollView contentContainerStyle={styles.createForm}>
+          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.createForm}>
             <View style={styles.createCard}>
               <Text style={styles.createTitle}>Créer un nouveau compte</Text>
 
@@ -521,6 +676,26 @@ const styles = StyleSheet.create({
   dangerBtn: { borderColor: colors.danger, backgroundColor: colors.dangerBg },
   successBtn: { borderColor: colors.normal, backgroundColor: colors.normalBg },
   deleteBtn: { borderColor: "#DC2626", backgroundColor: "#FEE2E2" },
+  premiumBtn: { borderColor: "#F59E0B", backgroundColor: "#FEF3C7" },
+  onlineDot: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "#10B981",
+    borderWidth: 2,
+    borderColor: "#fff",
+  },
+  premiumBadge: { backgroundColor: "#FEF3C7", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2, borderWidth: 1, borderColor: "#F59E0B" },
+  premiumBadgeText: { fontSize: 10, color: "#B45309", fontWeight: "700" },
+  verifiedBadge: { backgroundColor: "#D1FAE5", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
+  verifiedBadgeText: { fontSize: 10, color: "#065F46", fontWeight: "700" },
+  unverifiedBadge: { backgroundColor: "#FEE2E2", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
+  unverifiedBadgeText: { fontSize: 10, color: "#DC2626", fontWeight: "700" },
+  verifyBtn: { alignItems: "center", padding: 8, borderRadius: 8, backgroundColor: "#D1FAE5", borderWidth: 1, borderColor: "#065F46" },
+  revokeBtn: { borderColor: "#9CA3AF", backgroundColor: "#F3F4F6" },
   actionText: { fontSize: 12, fontWeight: "600", color: colors.textSecondary },
   logCard: {
     flexDirection: "row", backgroundColor: colors.surface,

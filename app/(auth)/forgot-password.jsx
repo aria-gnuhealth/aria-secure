@@ -36,7 +36,7 @@ export default function ForgotPasswordScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <Text style={styles.title}>Mot de passe oublié</Text>
       <Text style={styles.subtitle}>

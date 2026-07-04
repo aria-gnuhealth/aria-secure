@@ -21,6 +21,10 @@ export default function AnalyseResult() {
   const [analyse, setAnalyse] = useState(null);
   const [imageUrl, setImageUrl] = useState(null);
   const [heatmapUrl, setHeatmapUrl] = useState(null);
+  const [selectedPathology, setSelectedPathology] = useState(null);
+  const [showRadioModal, setShowRadioModal] = useState(false);
+  const [radiologists, setRadiologists] = useState([]);
+  const [onlineIds, setOnlineIds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [feedback, setFeedback] = useState(null);
@@ -106,36 +110,64 @@ export default function AnalyseResult() {
   const sendToRadiologist = async () => {
     setSendingToRadio(true);
     try {
-      const radioRes = await api.get("/auth/users", { params: { role: "radiologist", is_active: true } });
-      const radiologists = radioRes.data?.items || radioRes.data || [];
-      console.log("RADIOLOGISTS:", JSON.stringify(radiologists?.length));
-      if (!radiologists || radiologists.length === 0) {
+      const [radioRes, onlineRes] = await Promise.all([
+        api.get("/auth/users", { params: { role: "radiologist", is_active: true } }),
+        api.get("/dashboard/online-users").catch(() => ({ data: { online_user_ids: [] } }))
+      ]);
+      const list = radioRes.data?.items || radioRes.data || [];
+      if (!list || list.length === 0) {
         Alert.alert("Aucun radiologue", "Aucun radiologue disponible pour le moment.");
         return;
       }
-      // Afficher la liste des radiologues
-      const buttons = radiologists.slice(0, 5).map(r => ({
-        text: `${r.first_name || r.firstName} ${r.last_name || r.lastName}`,
-        onPress: async () => {
-          try {
-            await api.post("/chat/discussions", {
-              radiologist_id: r.id,
-              analysis_id: id,
-              message: "Bonjour, je vous soumets cette analyse pour validation clinique."
-            });
-            Alert.alert("✅ Envoyé", `L'analyse a été envoyée à ${r.first_name || r.firstName} ${r.last_name || r.lastName}.`);
-          } catch (e) {
-            Alert.alert("Erreur", e.response?.data?.detail || e.message);
-          }
-        }
-      }));
-      buttons.push({ text: "Annuler", style: "cancel" });
-      Alert.alert("Choisir un radiologue", "Sélectionnez le radiologue à qui envoyer cette analyse :", buttons);
+      const onlineIds = onlineRes.data?.online_user_ids || [];
+      setOnlineIds(onlineIds);
+      // Trier: en ligne en premier, puis par last_login
+      const sorted = [...list].sort((a, b) => {
+        const aOnline = onlineIds.includes(a.id) ? 1 : 0;
+        const bOnline = onlineIds.includes(b.id) ? 1 : 0;
+        if (bOnline !== aOnline) return bOnline - aOnline;
+        const la = a.last_login ? new Date(a.last_login) : new Date(0);
+        const lb = b.last_login ? new Date(b.last_login) : new Date(0);
+        return lb - la;
+      });
+      setRadiologists(sorted);
+      setShowRadioModal(true);
     } catch (e) {
-      console.log("RADIO ERROR:", e.response?.data, e.message);
       Alert.alert("Erreur", e.response?.data?.detail || "Impossible de charger les radiologues: " + e.message);
     } finally {
       setSendingToRadio(false);
+    }
+  };
+
+  const selectRadiologist = async (r) => {
+    setShowRadioModal(false);
+    try {
+      // Créer la discussion
+      const discRes = await api.post("/chat/discussions", {
+        radiologist_id: r.id,
+        analysis_id: id,
+        message: `Bonjour Dr. ${r.first_name} ${r.last_name}, je vous soumets cette analyse radiographique pour validation clinique. Résultat IA : ${analyse?.urgency_level || "—"} (${analyse?.confidence_score ? Math.round(analyse.confidence_score * 100) + "%" : "—"}).`
+      });
+
+      // Si on a une heatmap, envoyer l image annotée comme message avec pièce jointe
+      if (heatmapUrl && discRes.data?.id) {
+        try {
+          await api.post(`/chat/discussions/${discRes.data.id}/messages`, {
+            content: "📊 Image radiographique analysée par l'IA ARIA (heatmap Grad-CAM).",
+            message_type: "text",
+            attachment_url: heatmapUrl,
+            attachment_type: "image",
+            attachment_name: "analyse_heatmap.png"
+          });
+        } catch (e) {
+          console.log("Erreur envoi heatmap:", e.message);
+        }
+      }
+
+      Alert.alert("✅ Envoyé", `L'analyse a été envoyée à Dr. ${r.first_name} ${r.last_name}.`);
+      fetchFeedback(id);
+    } catch (e) {
+      Alert.alert("Erreur", e.response?.data?.detail || e.message);
     }
   };
 
@@ -279,7 +311,7 @@ export default function AnalyseResult() {
   return (
     <View style={[styles.container, { backgroundColor: theme?.bg }]}>
       <StatusBar backgroundColor={colors.primaryDark} barStyle="light-content" />
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
         {/* Header */}
         <View style={styles.header}>
@@ -374,10 +406,11 @@ export default function AnalyseResult() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>⚠️ Pathologies détectées ({detected.length})</Text>
             {detected.map((item, i) => (
-              <View key={i} style={styles.pathologyRow}>
+              <TouchableOpacity key={i} style={styles.pathologyRow} onPress={() => setSelectedPathology(item)} activeOpacity={0.7}>
                 <View style={styles.pathologyHeader}>
                   <View style={[styles.pathologyDot, { backgroundColor: ANOMALY_COLORS[i % ANOMALY_COLORS.length] }]} />
-                  <Text style={styles.pathologyName}>{item.pathology}</Text>
+                  <Text style={styles.pathologyName}>{item.pathology_fr || item.pathology}</Text>
+                  <Text style={styles.pathologyEn}>{item.pathology_en !== item.pathology_fr ? item.pathology_en || item.pathology : ""}</Text>
                   <Text style={[styles.pathologyPct, { color: getBarColor(item.probability) }]}>
                     {item.percentage || `${Math.round(item.probability * 100)}%`}
                   </Text>
@@ -389,7 +422,7 @@ export default function AnalyseResult() {
                   }]} />
                 </View>
                 <Text style={styles.urgencyTag}>Niveau : {item.urgency || "—"}</Text>
-              </View>
+              </TouchableOpacity>
             ))}
           </View>
         )}
@@ -437,10 +470,11 @@ export default function AnalyseResult() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>🔬 Toutes les pathologies ({sorted.length})</Text>
             {sorted.map((item, i) => (
-              <View key={i} style={[styles.pathologyRow, item.detected && styles.pathologyDetected]}>
+              <TouchableOpacity key={i} style={[styles.pathologyRow, item.detected && styles.pathologyDetected]} onPress={() => setSelectedPathology(item)} activeOpacity={0.7}>
                 <View style={styles.pathologyHeader}>
                   <Text style={styles.pathologyStatus}>{item.detected ? "🔴" : "🟢"}</Text>
-                  <Text style={styles.pathologyName}>{item.pathology}</Text>
+                  <Text style={styles.pathologyName}>{item.pathology_fr || item.pathology}</Text>
+                  <Text style={styles.pathologyEn}>{item.pathology_en !== item.pathology_fr ? item.pathology_en || item.pathology : ""}</Text>
                   <Text style={[styles.pathologyPct, { color: getBarColor(item.probability) }]}>
                     {item.percentage || `${Math.round(item.probability * 100)}%`}
                   </Text>
@@ -451,7 +485,7 @@ export default function AnalyseResult() {
                     backgroundColor: getBarColor(item.probability),
                   }]} />
                 </View>
-              </View>
+              </TouchableOpacity>
             ))}
           </View>
         )}
@@ -522,25 +556,8 @@ export default function AnalyseResult() {
 
         {/* Actions - Boutons principaux */}
         <View style={{ marginHorizontal: 16, marginTop: 16, gap: 12 }}>
-
-          {/* Bouton Télécharger rapport - pour tous */}
-          <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: "#1F6B9E" }, generatingReport && { opacity: 0.7 }]}
-            onPress={downloadReport}
-            disabled={generatingReport}
-            activeOpacity={0.8}
-          >
-            {generatingReport
-              ? <ActivityIndicator color="#fff" size="small" />
-              : <>
-                  <Text style={styles.actionBtnIcon}>📄</Text>
-                  <Text style={styles.actionBtnText}>Télécharger le rapport PDF</Text>
-                </>
-            }
-          </TouchableOpacity>
-
-          {/* Bouton Envoyer au radiologue - doctor uniquement */}
-          {user?.role === "doctor" && !feedback?.is_validated && (
+          {/* Envoyer au radiologue - non soumis uniquement */}
+          {["doctor", "admin"].includes(user?.role) && !feedback?.is_validated && !feedback?.discussion_id && (
             <TouchableOpacity
               style={[styles.actionBtn, { backgroundColor: "#8B5CF6" }, sendingToRadio && { opacity: 0.7 }]}
               onPress={sendToRadiologist}
@@ -556,7 +573,17 @@ export default function AnalyseResult() {
               }
             </TouchableOpacity>
           )}
-
+          {/* Analyse soumise en attente */}
+          {["doctor", "admin"].includes(user?.role) && !feedback?.is_validated && feedback?.discussion_id && (
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: "#6B7280" }]}
+              onPress={() => router.push(`/chat/${feedback.discussion_id}`)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.actionBtnIcon}>💬</Text>
+              <Text style={styles.actionBtnText}>Voir la consultation en cours</Text>
+            </TouchableOpacity>
+          )}
           {/* Boutons Valider/Rejeter - radiologue uniquement */}
           {user?.role === "radiologist" && !feedback?.is_validated && (
             <View style={{ flexDirection: "row", gap: 10 }}>
@@ -621,6 +648,90 @@ export default function AnalyseResult() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+      {/* Modal sélection radiologue */}
+      <Modal visible={showRadioModal} transparent animationType="slide" onRequestClose={() => setShowRadioModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.pathologyModal, { maxHeight: "70%" }]}>
+            <View style={styles.pathologyModalHeader}>
+              <Text style={styles.pathologyModalTitle}>🔬 Choisir un radiologue</Text>
+              <Text style={styles.pathologyModalEn}>Sélectionnez le radiologue pour cette analyse</Text>
+            </View>
+            <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: 350 }}>
+              {radiologists.map((r, i) => {
+                const lastLogin = r.last_login ? new Date(r.last_login) : null;
+                const isOnline = onlineIds.includes(r.id) || (lastLogin && (Date.now() - lastLogin.getTime()) < 5 * 60 * 1000);
+                const initials = `${(r.first_name || "")[0] || ""}${(r.last_name || "")[0] || ""}`.toUpperCase();
+                return (
+                  <TouchableOpacity
+                    key={r.id}
+                    style={{ flexDirection: "row", alignItems: "center", padding: 16, borderBottomWidth: 1, borderBottomColor: "#f0f0f0" }}
+                    onPress={() => selectRadiologist(r)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={{ position: "relative", marginRight: 12 }}>
+                      <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: "#EFF6FF", justifyContent: "center", alignItems: "center" }}>
+                        <Text style={{ fontSize: 16, fontWeight: "700", color: "#0F4C81" }}>{initials}</Text>
+                      </View>
+                      {isOnline && (
+                        <View style={{ position: "absolute", bottom: 0, right: 0, width: 12, height: 12, borderRadius: 6, backgroundColor: "#10B981", borderWidth: 2, borderColor: "#fff" }} />
+                      )}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 15, fontWeight: "700", color: "#1a1a2e" }}>
+                        Dr. {r.first_name} {r.last_name}
+                      </Text>
+                      <Text style={{ fontSize: 12, color: isOnline ? "#10B981" : "#9CA3AF", marginTop: 2 }}>
+                        {isOnline ? "🟢 En ligne" : lastLogin ? `Vu ${lastLogin.toLocaleDateString("fr-FR")}` : "Hors ligne"}
+                      </Text>
+                    </View>
+                    <Text style={{ fontSize: 20, color: "#0F4C81" }}>›</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+            <TouchableOpacity style={styles.pathologyModalClose} onPress={() => setShowRadioModal(false)}>
+              <Text style={styles.pathologyModalCloseText}>Annuler</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal explication pathologie */}
+        {selectedPathology && (
+          <Modal visible={!!selectedPathology} transparent animationType="fade" onRequestClose={() => setSelectedPathology(null)}>
+            <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setSelectedPathology(null)}>
+              <View style={styles.pathologyModal}>
+                <View style={styles.pathologyModalHeader}>
+                  <Text style={styles.pathologyModalTitle}>{selectedPathology.pathology_fr || selectedPathology.pathology}</Text>
+                  <Text style={styles.pathologyModalEn}>{selectedPathology.pathology_en || selectedPathology.pathology}</Text>
+                </View>
+                <View style={styles.pathologyModalBody}>
+                  <View style={styles.pathologyModalStat}>
+                    <Text style={styles.pathologyModalStatLabel}>Probabilité</Text>
+                    <Text style={[styles.pathologyModalStatValue, { color: getBarColor(selectedPathology.probability) }]}>
+                      {selectedPathology.percentage || `${Math.round(selectedPathology.probability * 100)}%`}
+                    </Text>
+                  </View>
+                  <View style={styles.pathologyModalStat}>
+                    <Text style={styles.pathologyModalStatLabel}>Niveau d urgence</Text>
+                    <Text style={[styles.pathologyModalStatValue, { color: getBarColor(selectedPathology.probability) }]}>
+                      {selectedPathology.urgency || "—"}
+                    </Text>
+                  </View>
+                  <View style={styles.pathologyModalDivider} />
+                  <Text style={styles.pathologyModalDescTitle}>Description</Text>
+                  <Text style={styles.pathologyModalDesc}>{selectedPathology.description_fr || "Aucune description disponible."}</Text>
+                  {selectedPathology.description_en && (
+                    <Text style={styles.pathologyModalDescEn}>{selectedPathology.description_en}</Text>
+                  )}
+                </View>
+                <TouchableOpacity style={styles.pathologyModalClose} onPress={() => setSelectedPathology(null)}>
+                  <Text style={styles.pathologyModalCloseText}>Fermer</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          </Modal>
+        )}
     </View>
   );
 }
@@ -685,6 +796,93 @@ const styles = StyleSheet.create({
   pathologyHeader: { flexDirection: "row", alignItems: "center", marginBottom: 6 },
   pathologyDot: { width: 10, height: 10, borderRadius: 5, marginRight: 8 },
   pathologyStatus: { fontSize: 12, marginRight: 6 },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  pathologyModal: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    width: "100%",
+    maxWidth: 400,
+    overflow: "hidden",
+  },
+  pathologyModalHeader: {
+    backgroundColor: "#0F4C81",
+    padding: 16,
+  },
+  pathologyModalTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#fff",
+  },
+  pathologyModalEn: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.7)",
+    marginTop: 2,
+    fontStyle: "italic",
+  },
+  pathologyModalBody: {
+    padding: 16,
+  },
+  pathologyModalStat: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  pathologyModalStatLabel: {
+    fontSize: 13,
+    color: "#666",
+    fontWeight: "600",
+  },
+  pathologyModalStatValue: {
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  pathologyModalDivider: {
+    height: 1,
+    backgroundColor: "#eee",
+    marginVertical: 12,
+  },
+  pathologyModalDescTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#0F4C81",
+    marginBottom: 6,
+  },
+  pathologyModalDesc: {
+    fontSize: 13,
+    color: "#333",
+    lineHeight: 20,
+  },
+  pathologyModalDescEn: {
+    fontSize: 11,
+    color: "#888",
+    fontStyle: "italic",
+    marginTop: 8,
+    lineHeight: 16,
+  },
+  pathologyModalClose: {
+    borderTopWidth: 1,
+    borderTopColor: "#eee",
+    padding: 14,
+    alignItems: "center",
+  },
+  pathologyModalCloseText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#0F4C81",
+  },
+  pathologyEn: {
+    fontSize: 10,
+    color: colors.textMuted,
+    fontStyle: "italic",
+    marginTop: -2,
+    marginBottom: 2,
+  },
   pathologyName: { flex: 1, fontSize: 13, fontWeight: "600", color: colors.textPrimary },
   pathologyPct: { fontSize: 13, fontWeight: "700" },
   progressBg: { height: 6, backgroundColor: colors.borderLight, borderRadius: 3, overflow: "hidden" },
