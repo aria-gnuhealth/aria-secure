@@ -1,8 +1,0 @@
-<?xml version="1.0"?>
-<tree>
-    <field name="patient"/>
-    <field name="type_analyse"/>
-    <field name="state"/>
-    <field name="score_confiance"/>
-    <field name="niveau_urgence"/>
-</tree>
