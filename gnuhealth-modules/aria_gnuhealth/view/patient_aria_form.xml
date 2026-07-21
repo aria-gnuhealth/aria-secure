@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<data>
+    <xpath expr="//page[@id='patient_family']" position="after">
+        <page string="Analyses ARIA" id="aria_page">
+            <group colspan="4" col="2" id="aria_uuid_group">
+                <label name="aria_uuid"/>
+                <field name="aria_uuid"/>
+            </group>
+            <newline/>
+            <group colspan="4" id="aria_group">
+                <button string="Nouvelle Analyse ARIA"
+                        name="%(act_aria_analyze_wizard)d"
+                        icon="tryton-ok"/>
+            </group>
+        </page>
+    </xpath>
+</data>

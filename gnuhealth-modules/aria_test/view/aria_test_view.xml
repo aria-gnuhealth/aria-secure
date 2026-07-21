@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<data>
+    <record model="ir.ui.view" id="aria_test_view_form">
+        <field name="model">aria.test</field>
+        <field name="type">form</field>
+        <field name="name">aria_test_form</field>
+    </record>
+    <record model="ir.ui.view" id="aria_test_view_tree">
+        <field name="model">aria.test</field>
+        <field name="type">tree</field>
+        <field name="name">aria_test_tree</field>
+    </record>
+
+    <record model="ir.action.act_window" id="act_aria_test">
+        <field name="name">ARIA Test</field>
+        <field name="res_model">aria.test</field>
+    </record>
+    <record model="ir.action.act_window.view" id="act_aria_test_view_tree">
+        <field name="sequence" eval="10"/>
+        <field name="view" ref="aria_test_view_tree"/>
+        <field name="act_window" ref="act_aria_test"/>
+    </record>
+    <record model="ir.action.act_window.view" id="act_aria_test_view_form">
+        <field name="sequence" eval="20"/>
+        <field name="view" ref="aria_test_view_form"/>
+        <field name="act_window" ref="act_aria_test"/>
+    </record>
+
+    <menuitem name="ARIA Test" sequence="90"
+        action="act_aria_test" id="menu_aria_test"/>
+</data>

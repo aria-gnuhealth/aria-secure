@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+<form>
+    <group colspan="4" col="4" id="aria_imgres_main_group">
+        <label name="imaging_result"/>
+        <field name="imaging_result"/>
+        <label name="image_attachment"/>
+        <field name="image_attachment"/>
+        <label name="type_analyse"/>
+        <field name="type_analyse"/>
+        <label name="state"/>
+        <field name="state"/>
+        <label name="date_analyse"/>
+        <field name="date_analyse"/>
+    </group>
+    <newline/>
+    <group colspan="4" col="1" id="aria_imgres_button_group">
+        <button string="Lancer l'analyse ARIA"
+                name="lancer_analyse"
+                icon="tryton-ok"
+                confirm="Lancer l'analyse ARIA sur cette image ?"/>
+    </group>
+    <newline/>
+    <group colspan="4" col="4" id="aria_imgres_resultats_group" string="Resultats">
+        <label name="score_confiance"/>
+        <field name="score_confiance"/>
+        <label name="examen_normal"/>
+        <field name="examen_normal"/>
+        <label name="niveau_urgence"/>
+        <field name="niveau_urgence"/>
+        <label name="inference_ms"/>
+        <field name="inference_ms"/>
+        <label name="pathologies_detectees"/>
+        <field name="pathologies_detectees" colspan="4" height="100"/>
+        <label name="annotated_image"/>
+        <field name="annotated_image"/>
+        <label name="report_pdf"/>
+        <field name="report_pdf"/>
+        <field name="message_erreur" colspan="4" height="60"/>
+        <field name="resultats_json" colspan="4" height="120"/>
+    </group>
+</form>

@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<form>
+    <group colspan="4" col="4" id="aria_config_remote_group">
+        <label name="aria_core_url"/>
+        <field name="aria_core_url"/>
+        <label name="email"/>
+        <field name="email"/>
+        <label name="password"/>
+        <field name="password" widget="password"/>
+        <label name="timeout"/>
+        <field name="timeout"/>
+        <label name="actif"/>
+        <field name="actif"/>
+    </group>
+    <newline/>
+    <group colspan="4" col="4" id="aria_config_local_group" string="Inference locale (ONNX)">
+        <label name="path_chexpert"/>
+        <field name="path_chexpert" colspan="3"/>
+        <label name="path_mura"/>
+        <field name="path_mura" colspan="3"/>
+        <label name="mura_threshold"/>
+        <field name="mura_threshold"/>
+    </group>
+</form>

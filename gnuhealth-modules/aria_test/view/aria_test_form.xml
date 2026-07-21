@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<form>
+    <group colspan="4" col="4" id="aria_test_main_group">
+        <label name="name"/>
+        <field name="name"/>
+        <label name="aria_core_url"/>
+        <field name="aria_core_url"/>
+        <label name="state"/>
+        <field name="state"/>
+    </group>
+    <newline/>
+    <group colspan="4" col="1" id="aria_test_button_group">
+        <button string="Tester la connexion"
+                name="tester_connexion"
+                icon="tryton-ok"/>
+    </group>
+    <newline/>
+    <group colspan="4" col="4" id="aria_test_result_group" string="Resultat">
+        <field name="resultat" colspan="4" height="150"/>
+    </group>
+</form>

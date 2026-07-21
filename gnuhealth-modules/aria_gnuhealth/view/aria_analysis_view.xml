@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<data>
+    <record model="ir.ui.view" id="aria_analysis_view_form">
+        <field name="model">aria.analysis</field>
+        <field name="type">form</field>
+        <field name="name">aria_analysis_form</field>
+    </record>
+    <record model="ir.ui.view" id="aria_analysis_view_tree">
+        <field name="model">aria.analysis</field>
+        <field name="type">tree</field>
+        <field name="name">aria_analysis_tree</field>
+    </record>
+
+    <record model="ir.action.act_window" id="act_aria_analysis">
+        <field name="name">Analyses ARIA</field>
+        <field name="res_model">aria.analysis</field>
+    </record>
+    <record model="ir.action.act_window.view" id="act_aria_analysis_view_tree">
+        <field name="sequence" eval="10"/>
+        <field name="view" ref="aria_analysis_view_tree"/>
+        <field name="act_window" ref="act_aria_analysis"/>
+    </record>
+    <record model="ir.action.act_window.view" id="act_aria_analysis_view_form">
+        <field name="sequence" eval="20"/>
+        <field name="view" ref="aria_analysis_view_form"/>
+        <field name="act_window" ref="act_aria_analysis"/>
+    </record>
+
+    <menuitem name="Analyses ARIA" sequence="10"
+        action="act_aria_analysis" id="menu_aria_analysis"/>
+</data>

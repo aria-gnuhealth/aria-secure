@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<tree>
+    <field name="imaging_result"/>
+    <field name="image_attachment"/>
+    <field name="type_analyse"/>
+    <field name="state"/>
+    <field name="score_confiance"/>
+    <field name="niveau_urgence"/>
+    <field name="annotated_image"/>
+    <field name="report_pdf"/>
+    <button string="Lancer l'analyse ARIA"
+            name="lancer_analyse"
+            confirm="Lancer l'analyse ARIA sur cette ligne ?"/>
+</tree>
